@@ -26,10 +26,8 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 Using Lazy.nvim:
 ```lua
 {
-  'your-username/pile.nvim',
-  config = function()
-    require('pile').setup()
-  end
+  'shabaraba/pile.nvim',
+  opts ={}
 }
 ```
 
