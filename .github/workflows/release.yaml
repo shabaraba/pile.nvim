@@ -14,7 +14,7 @@ jobs:
         id: release
         with:
           package-name: pile.nvim
-
+          release-type: simple
   # deploy:
   #   runs-on: ubuntu-latest
   #   needs:
