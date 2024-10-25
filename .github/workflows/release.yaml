@@ -13,7 +13,6 @@ jobs:
       - uses: google-github-actions/release-please-action@v4
         id: release
         with:
-          package-name: pile.nvim
           release-type: simple
           token: ${{ steps.RELEASE_PLEASE_GITHUB_TOKEN }}
   # deploy:
