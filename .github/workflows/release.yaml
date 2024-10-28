@@ -3,13 +3,14 @@ on:
   push:
     branches:
       - main
-
+permissions:
+  contents: write
 jobs:
   release-please:
     runs-on: ubuntu-latest
     environment: production
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
+      release_commit: ${{ steps.release.outputs.release_commit }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -21,7 +22,7 @@ jobs:
     needs:
       - release-please
     # リリースコミットに対してのみ実行する
-    if: ${{ needs.release-please.outputs.release_created }}
+    if: ${{ needs.release-please.outputs.release_commit }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
