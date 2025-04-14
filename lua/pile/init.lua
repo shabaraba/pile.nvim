@@ -30,9 +30,15 @@ function M.setup(opts)
   
   Config.setup(opts)
 
-  -- ハイライトグループを定義
-  vim.cmd("highlight SidebarCurrentBuffer guibg=Config.buffer.highlight.current.bg guifg=Red")
-  vim.cmd("highlight SelectedWindow guibg=Red guifg=White")
+  -- ハイライトグループを定義（新しいAPIを使用）
+  vim.api.nvim_set_hl(0, "SidebarCurrentBuffer", {
+    bg = Config.buffer.highlight.current.bg,
+    fg = Config.buffer.highlight.current.fg,
+  })
+  vim.api.nvim_set_hl(0, "SelectedWindow", {
+    bg = "Red",
+    fg = "White",
+  })
 
   vim.api.nvim_create_user_command("PileToggle", M.toggle_sidebar, { desc = "toggle pile window" })
   vim.api.nvim_create_user_command("PileGoToNextBuffer", M.switch_to_next_buffer, { desc = "go to next buffer" })
