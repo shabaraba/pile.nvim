@@ -1,11 +1,33 @@
 Config = require("pile.config")
 local buffers = require("pile.buffers")
 local sidebar = require("pile.windows.sidebar")
+local log = require("pile.log")
 
 local M = {}
 
+-- nui.nvimの依存関係をチェック
+local function check_dependencies()
+  log.trace("Checking dependencies...")
+  local has_nui, nui = pcall(require, "nui.popup")
+  if not has_nui then
+    log.error("Required dependency nui.nvim not found. Please install it with your plugin manager.")
+    vim.notify(
+      "pile.nvim requires nui.nvim to be installed. Please add it to your plugin manager.",
+      vim.log.levels.ERROR
+    )
+    return false
+  end
+  log.trace("All dependencies found")
+  return true
+end
+
 ---@param opts Config
 function M.setup(opts)
+  -- 依存関係のチェック
+  if not check_dependencies() then
+    return
+  end
+  
   Config.setup(opts)
 
   -- ハイライトグループを定義

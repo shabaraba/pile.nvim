@@ -20,15 +20,43 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 - Automatically updates file names when a buffer is renamed.(not implemented yet)
 - LSP integration: Automatically updates import paths when a file is renamed.(not implemented yet)
 
+## Requirements
+
+- Neovim 0.5 or later
+- [nui.nvim](https://github.com/MunifTanjim/nui.nvim) - Required for UI components
+- LSP configuration for full renaming functionality (optional)
 
 ## Installation
 
-Using Lazy.nvim:
+### Using [Lazy.nvim](https://github.com/folke/lazy.nvim)
+
 ```lua
 {
   'shabaraba/pile.nvim',
-  opts ={}
+  dependencies = {
+    'MunifTanjim/nui.nvim', -- Required dependency
+  },
+  opts = {}
 }
+```
+
+### Using [Packer.nvim](https://github.com/wbthomason/packer.nvim)
+
+```lua
+use {
+  'shabaraba/pile.nvim',
+  requires = { 'MunifTanjim/nui.nvim' }, -- Required dependency
+  config = function()
+    require('pile').setup()
+  end
+}
+```
+
+### Using [vim-plug](https://github.com/junegunn/vim-plug)
+
+```vim
+Plug 'MunifTanjim/nui.nvim'  " Required dependency
+Plug 'shabaraba/pile.nvim'
 ```
 
 ## Setup and Configuration
@@ -55,29 +83,20 @@ require('pile').setup({
 
 1. Open Buffers: The sidebar shows all open buffers, with the current buffer highlighted.
 
-
-
 ## Usage
 
 Open the sidebar:
-:PileOpen
+:PileToggle
 or set a keybind in your init.lua:
 
-vim.api.nvim_set_keymap('n', '<leader>ps', ':PileOpen<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>ps', ':PileToggle<CR>', { noremap = true, silent = true })
 
-Close the sidebar:
-:PileClose
+Navigate between buffers:
+:PileGoToNextBuffer
+:PileGoToPrevBuffer
 
 Rename a buffer:
 Edit the buffer name directly in the sidebar and save the changes to rename the file.
-
-
-## Requirements
-
-Neovim 0.5 or later
-
-LSP configuration for full renaming functionality
-
 
 ## Contributing
 
