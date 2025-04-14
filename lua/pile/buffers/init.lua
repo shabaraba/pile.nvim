@@ -252,8 +252,8 @@ function M.get_list()
               local diff_idx = #long_path - #short_path
               if diff_idx > 0 and diff_idx < #long_path then
                 local diff_segment = long_path[diff_idx + 1]
-                shorter.filename = ".../​" .. filename
-                longer.filename = diff_segment .. "/​../" .. filename
+                shorter.filename = ".../" .. filename
+                longer.filename = diff_segment .. "/../" .. filename
               end
             end
           end
