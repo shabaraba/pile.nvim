@@ -107,16 +107,14 @@ end
 
 -- alpha.nvimの無効化（存在する場合）
 local function disable_alpha_if_needed()
-  -- この関数は不要になったため空実装
-  log.debug("alpha.nvim無効化関数は現在無効化されています（スタートアップ画面との共存のため）")
-  -- 実際には何もしない
+  -- スタートアップ画面と共存するため、この関数では何も行わない
+  log.debug("alpha.nvim無効化関数はスキップされました（スタートアップ画面との共存のため）")
 end
 
 -- セッションの読み込み前処理
 local function prepare_for_session_load()
-  -- この関数は不要になったため空実装
-  log.debug("セッション読み込み前処理は現在無効化されています（スタートアップ画面との共存のため）")
-  -- 実際には何もしない
+  -- スタートアップ画面と共存するため、この関数では何も行わない
+  log.debug("セッション読み込み前処理はスキップされました（スタートアップ画面との共存のため）")
 end
 
 -- セッションの保存
@@ -264,18 +262,6 @@ function M.load_session(name)
   
   log.debug("Found " .. #buffers .. " buffers to restore")
   
-  -- 現在の全バッファをクリア（オプション設定による）
-  -- スタートアップ画面の共存のため、この処理は行わない
-  if Config.session.clear_buffers_on_load and false then
-    log.debug("Clearing existing buffers")
-    local current_buffers = vim.api.nvim_list_bufs()
-    for _, buf in ipairs(current_buffers) do
-      if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_get_option(buf, 'modified') == false then
-        pcall(vim.api.nvim_buf_delete, buf, { force = false })
-      end
-    end
-  end
-  
   -- バッファを読み込む
   local active_buffer = nil
   local loaded_buffers = {}
@@ -294,16 +280,22 @@ function M.load_session(name)
         vim.fn.bufload(buf_nr)
       end
       
+      -- 追加情報をログに出力
+      log.debug(string.format("Loaded buffer %d: %s (active: %s)", 
+                             buf_nr, buffer_info.buffer_path, 
+                             buffer_info.is_active and "yes" or "no"))
+      
       table.insert(loaded_buffers, {
         buf = buf_nr,
-        is_active = buffer_info.is_active,
+        is_active = buffer_info.is_active == 1 or buffer_info.is_active == true,
         cursor = buffer_info.cursor_position,
         path = buffer_info.buffer_path,
       })
       
       -- アクティブバッファを記録
-      if buffer_info.is_active then
+      if buffer_info.is_active == 1 or buffer_info.is_active == true then
         active_buffer = loaded_buffers[#loaded_buffers]
+        log.debug("Marked as active buffer: " .. buffer_info.buffer_path)
       end
     else
       log.warn("File not found: " .. buffer_info.buffer_path)
@@ -315,27 +307,44 @@ function M.load_session(name)
     return false
   end
   
-  -- スタートアップ画面との共存のため、現在のウィンドウにバッファを表示しない
-  -- バッファは読み込むだけにして、pile.nvimのサイドバーでバッファを選択したときに表示するようにする
-  if false and active_buffer then
-    -- アクティブバッファを現在のウィンドウに表示
-    pcall(vim.api.nvim_set_current_buf, active_buffer.buf)
-    
-    -- カーソル位置を設定
-    if active_buffer.cursor and active_buffer.cursor ~= "" then
-      local row, col = string.match(active_buffer.cursor, "(%d+),(%d+)")
-      if row and col then
-        -- カーソル位置の設定を試みる
-        pcall(function()
-          vim.api.nvim_win_set_cursor(0, { tonumber(row), tonumber(col) })
-        end)
+  -- 現在の状態をチェック
+  local current_buf = vim.api.nvim_get_current_buf()
+  local current_ft = vim.api.nvim_buf_get_option(current_buf, 'filetype')
+  local is_special_buffer = (current_ft == 'alpha' or current_ft == 'dashboard' or current_ft == 'startify')
+  
+  -- スタートアップ画面などの特殊バッファが表示されている場合は、
+  -- バッファを変更せずに情報だけ保存しておく
+  if is_special_buffer then
+    log.info("Startup screen detected. Storing buffer information without changing current view.")
+    -- セッションが読み込まれたフラグを設定
+    M._session_loaded = true
+    M._loaded_buffers = loaded_buffers -- バッファ情報を保存
+    -- 通知でユーザーに知らせる
+    vim.defer_fn(function()
+      vim.notify("Session loaded. Open pile sidebar to access the buffers.", vim.log.levels.INFO)
+    end, 100)
+  else
+    -- 通常の場合: アクティブバッファがあれば表示
+    if active_buffer then
+      log.debug("Setting active buffer: " .. active_buffer.path)
+      pcall(vim.api.nvim_set_current_buf, active_buffer.buf)
+      
+      -- カーソル位置を設定
+      if active_buffer.cursor and active_buffer.cursor ~= "" then
+        local row, col = string.match(active_buffer.cursor, "(%d+),(%d+)")
+        if row and col then
+          -- カーソル位置の設定を試みる
+          pcall(function()
+            vim.api.nvim_win_set_cursor(0, { tonumber(row), tonumber(col) })
+          end)
+        end
       end
     end
+    
+    -- セッションが読み込まれたフラグを設定
+    M._session_loaded = true
+    M._loaded_buffers = loaded_buffers -- バッファ情報を保存
   end
-  
-  -- セッションが読み込まれたフラグを設定
-  M._session_loaded = true
-  M._loaded_buffers = loaded_buffers -- バッファ情報を保存
   
   log.info("Session '" .. name .. "' loaded successfully with " .. #loaded_buffers .. " buffers")
   return true
