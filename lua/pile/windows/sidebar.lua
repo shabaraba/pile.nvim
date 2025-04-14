@@ -1,6 +1,7 @@
 local globals = require 'pile.globals'
 local buffers = require 'pile.buffers'
 local log = require 'pile.log'
+local sqlite = require 'pile.repositories.sqlite'
 
 local buffer_list = {}
 
@@ -19,6 +20,23 @@ local function set_buffer_lines()
   local lines = {}
 
   buffer_list = buffers.get_list()
+  
+  -- バッファリストが空の場合、セッションから読み込んだバッファ情報が利用可能か確認
+  if #buffer_list == 0 and sqlite._loaded_buffers and #sqlite._loaded_buffers > 0 then
+    log.info("Using session loaded buffers for sidebar display")
+    -- セッションから読み込んだバッファを使用
+    for _, buffer_info in ipairs(sqlite._loaded_buffers) do
+      if vim.api.nvim_buf_is_valid(buffer_info.buf) then
+        local name = buffer_info.path
+        local filename = vim.fn.fnamemodify(name, ":t")
+        table.insert(buffer_list, {
+          buf = buffer_info.buf,
+          name = name,
+          filename = filename
+        })
+      end
+    end
+  end
   
   -- デバッグ情報: サイドバーに表示する前のバッファリスト
   log.debug("Sidebar Buffer List Before Display:")
@@ -125,6 +143,23 @@ function M.update()
   end
 
   buffer_list = buffers.get_list()
+  
+  -- バッファリストが空の場合、セッションから読み込んだバッファ情報を使用
+  if #buffer_list == 0 and sqlite._loaded_buffers and #sqlite._loaded_buffers > 0 then
+    log.info("Update: Using session loaded buffers for sidebar display")
+    -- セッションから読み込んだバッファを使用
+    for _, buffer_info in ipairs(sqlite._loaded_buffers) do
+      if vim.api.nvim_buf_is_valid(buffer_info.buf) then
+        local name = buffer_info.path
+        local filename = vim.fn.fnamemodify(name, ":t")
+        table.insert(buffer_list, {
+          buf = buffer_info.buf,
+          name = name,
+          filename = filename
+        })
+      end
+    end
+  end
   
   -- デバッグ情報: 更新時のバッファリスト
   log.debug("Update: Buffer List Before Display:")

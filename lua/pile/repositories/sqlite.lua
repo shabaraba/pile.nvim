@@ -107,58 +107,16 @@ end
 
 -- alpha.nvimの無効化（存在する場合）
 local function disable_alpha_if_needed()
-  -- alpha.nvimが存在するか確認
-  local has_alpha = package.loaded["alpha"] ~= nil
-  
-  if has_alpha then
-    log.debug("alpha.nvim detected, attempting to disable for session restore")
-    
-    -- alpha.nvimのバッファを検索して閉じる
-    local bufs = vim.api.nvim_list_bufs()
-    for _, buf in ipairs(bufs) do
-      if vim.api.nvim_buf_is_valid(buf) then
-        local buf_name = vim.api.nvim_buf_get_name(buf)
-        if buf_name:match("alpha") or vim.bo[buf].filetype == "alpha" then
-          log.debug("Found alpha buffer, closing it: " .. buf)
-          pcall(vim.api.nvim_buf_delete, buf, { force = true })
-        end
-      end
-    end
-    
-    -- alphaのautocommandを一時的に無効化
-    pcall(function()
-      local alpha_autocommands = vim.api.nvim_get_autocmds({
-        group = "alpha_autogroup",
-      })
-      
-      if alpha_autocommands and #alpha_autocommands > 0 then
-        log.debug("Temporarily disabling alpha.nvim autocommands")
-        vim.api.nvim_create_augroup("alpha_autogroup", { clear = true })
-      end
-    end)
-  end
+  -- この関数は不要になったため空実装
+  log.debug("alpha.nvim無効化関数は現在無効化されています（スタートアップ画面との共存のため）")
+  -- 実際には何もしない
 end
 
 -- セッションの読み込み前処理
 local function prepare_for_session_load()
-  -- alpha.nvimが邪魔にならないようにする
-  disable_alpha_if_needed()
-  
-  -- その他のプラグインのスタートアップ画面も閉じる
-  -- dashboard.nvim, startify, startupなど
-  local startup_filetypes = {"alpha", "dashboard", "startify", "startup"}
-  
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_valid(buf) then
-      local ft = vim.api.nvim_buf_get_option(buf, "filetype")
-      for _, startup_ft in ipairs(startup_filetypes) do
-        if ft == startup_ft then
-          pcall(vim.api.nvim_buf_delete, buf, { force = true })
-          break
-        end
-      end
-    end
-  end
+  -- この関数は不要になったため空実装
+  log.debug("セッション読み込み前処理は現在無効化されています（スタートアップ画面との共存のため）")
+  -- 実際には何もしない
 end
 
 -- セッションの保存
@@ -306,11 +264,9 @@ function M.load_session(name)
   
   log.debug("Found " .. #buffers .. " buffers to restore")
   
-  -- スタートアップ画面などを閉じる準備
-  prepare_for_session_load()
-  
   -- 現在の全バッファをクリア（オプション設定による）
-  if Config.session.clear_buffers_on_load then
+  -- スタートアップ画面の共存のため、この処理は行わない
+  if Config.session.clear_buffers_on_load and false then
     log.debug("Clearing existing buffers")
     local current_buffers = vim.api.nvim_list_bufs()
     for _, buf in ipairs(current_buffers) do
@@ -359,8 +315,9 @@ function M.load_session(name)
     return false
   end
   
-  -- すべてのバッファがロードされた後、アクティブなバッファを設定
-  if active_buffer then
+  -- スタートアップ画面との共存のため、現在のウィンドウにバッファを表示しない
+  -- バッファは読み込むだけにして、pile.nvimのサイドバーでバッファを選択したときに表示するようにする
+  if false and active_buffer then
     -- アクティブバッファを現在のウィンドウに表示
     pcall(vim.api.nvim_set_current_buf, active_buffer.buf)
     
@@ -374,26 +331,11 @@ function M.load_session(name)
         end)
       end
     end
-  elseif #loaded_buffers > 0 then
-    -- アクティブバッファがなければ最初のバッファを表示
-    pcall(vim.api.nvim_set_current_buf, loaded_buffers[1].buf)
-  end
-  
-  -- サイドバーを更新（存在する場合）
-  if package.loaded["pile.windows.sidebar"] then
-    local sidebar = require("pile.windows.sidebar")
-    if sidebar.is_open() then
-      sidebar.render()
-    end
   end
   
   -- セッションが読み込まれたフラグを設定
   M._session_loaded = true
-  
-  -- 最後にalpha.nvimが再度起動しないようにする
-  vim.defer_fn(function()
-    disable_alpha_if_needed()
-  end, 50)
+  M._loaded_buffers = loaded_buffers -- バッファ情報を保存
   
   log.info("Session '" .. name .. "' loaded successfully with " .. #loaded_buffers .. " buffers")
   return true
@@ -569,28 +511,17 @@ function M.setup()
         if vim.fn.argc() == 0 then
           log.info("Triggering auto-load of session (early) on " .. event .. "...")
           
-          -- スタートアップ画面などを閉じる準備
-          prepare_for_session_load()
-          
-          -- 即座にセッションを読み込む（遅延なし）
-          local loaded = M.auto_load_last_session()
-          
-          if loaded then
-            -- セッションが読み込まれた場合、alpha.nvimなどが後から表示されないように対策
-            vim.api.nvim_create_autocmd("VimEnter", {
-              group = group,
-              callback = function()
-                -- alpha.nvimが再度表示されないようにする
-                disable_alpha_if_needed()
-                
-                -- セッションが読み込まれたら改めて通知
-                vim.defer_fn(function()
-                  vim.notify("Session restored successfully", vim.log.levels.INFO)
-                end, 100)
-              end,
-              once = true,
-            })
-          end
+          -- バックグラウンドでセッションを読み込む（スタートアップ画面を妨げない）
+          vim.defer_fn(function()
+            local loaded = M.auto_load_last_session()
+            
+            if loaded then
+              -- 控えめな通知でセッション読み込み完了を知らせる
+              vim.defer_fn(function()
+                vim.notify("Pile: バッファのセッションを復元しました。サイドバーを開いて確認できます。", vim.log.levels.INFO)
+              end, 100)
+            end
+          end, 50)
         else
           log.debug("Skipping auto-load because files were specified in command line")
         end
@@ -607,11 +538,10 @@ function M.setup()
         if vim.fn.argc() == 0 and not M._session_loaded then
           log.info("Fallback: Triggering auto-load of session on VimEnter...")
           
-          -- スタートアップ画面などを閉じる準備
-          prepare_for_session_load()
-          
-          -- セッション読み込み
-          M.auto_load_last_session()
+          -- バックグラウンドでセッションを読み込む
+          vim.defer_fn(function()
+            M.auto_load_last_session()
+          end, 50)
         end
       end,
       desc = "Auto-load pile.nvim session (fallback)",
