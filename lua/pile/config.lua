@@ -1,32 +1,53 @@
 -- setupで受け取るconfigはここ
-local M = {}
+local M = {
+  debug = {
+    enabled = false, -- デフォルトではデバッグログを無効化
+    level = "info", -- デバッグレベル: "error", "warn", "info", "debug", "trace"
+  }
+}
 
 M.setup = function(opts)
-  -- M.sidebar = {
-  --   width = opts.sidebar.width,
-  --   position = opts.sidebar.position,
-  --   transparent = opts.sidebar.transparent,
-  -- }
-  -- M.functions = {
-  --   manage_multiple_buffer_lists = opts.functions.manage_multiple_buffer_lists,
-  -- }
+  -- 設定項目がnilの場合のデフォルト値を設定する関数
+  local function set_default(path, default_value)
+    local table_path = opts
+    local levels = {}
+    for part in string.gmatch(path, "[^.]+") do
+      table.insert(levels, part)
+    end
+    
+    for i = 1, #levels - 1 do
+      local key = levels[i]
+      if table_path[key] == nil then
+        table_path[key] = {}
+      end
+      table_path = table_path[key]
+    end
+    
+    local final_key = levels[#levels]
+    if table_path[final_key] == nil then
+      table_path[final_key] = default_value
+    end
+    
+    return table_path[final_key]
+  end
+
+  -- デバッグ設定
+  if opts.debug ~= nil then
+    M.debug.enabled = opts.debug.enabled ~= nil and opts.debug.enabled or M.debug.enabled
+    M.debug.level = opts.debug.level ~= nil and opts.debug.level or M.debug.level
+  end
+
+  -- バッファハイライト設定
   M.buffer = {
     highlight = {
       current = {
         bg = "#3E4452",
         fg = "Red",
-
-        -- bg = (opts.buffer.highlight.current.bg ~= nil) and opts.buffer.highlight.current.bg or "#3E4452",
-        -- fg = (opts.buffer.highlight.current.fg ~= nil) and opts.buffer.highlight.current.fg or "Red",
       },
-      -- selected = {
-      --   bg = opts.buffer.highlight.selected.bg,
-      --   fg = opts.buffer.highlight.selected.fg,
-      -- }
     },
-    -- sort = opts.buffer.sort,
-    -- ascending = opts.buffer.ascending,
   }
+  
+  -- その他の設定があれば追加
 end
 
 return M
