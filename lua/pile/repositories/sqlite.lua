@@ -21,34 +21,70 @@ local function initialize()
   log.debug("Using database path: " .. db_path)
 
   -- データベース接続
-  local db = sqlite.new(db_path, {
-    busy_timeout = 1000, -- 1秒のタイムアウト
-  })
+  local db, err = pcall(function() 
+    return sqlite.new(db_path, {
+      busy_timeout = 1000, -- 1秒のタイムアウト
+    })
+  end)
 
-  if not db then
-    log.error("Failed to initialize SQLite database")
+  if not db or err then
+    log.error("Failed to initialize SQLite database: " .. (err or "Unknown error"))
     return nil
   end
   
-  -- テーブルが存在しない場合は作成
-  db:exec([[
-    CREATE TABLE IF NOT EXISTS sessions (
-      id INTEGER PRIMARY KEY,
-      name TEXT UNIQUE,
-      created_at TIMESTAMP,
-      updated_at TIMESTAMP
-    );
-    
-    CREATE TABLE IF NOT EXISTS session_buffers (
-      id INTEGER PRIMARY KEY,
-      session_id INTEGER,
-      buffer_path TEXT,
-      display_order INTEGER,
-      cursor_position TEXT,
-      is_active BOOLEAN,
-      FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
-    );
-  ]])
+  -- テーブル作成は try-catch で囲む
+  local success, create_err = pcall(function()
+    if type(db.exec) == "function" then
+      -- 標準的なAPIの場合
+      db:exec([[
+        CREATE TABLE IF NOT EXISTS sessions (
+          id INTEGER PRIMARY KEY,
+          name TEXT UNIQUE,
+          created_at TIMESTAMP,
+          updated_at TIMESTAMP
+        );
+        
+        CREATE TABLE IF NOT EXISTS session_buffers (
+          id INTEGER PRIMARY KEY,
+          session_id INTEGER,
+          buffer_path TEXT,
+          display_order INTEGER,
+          cursor_position TEXT,
+          is_active BOOLEAN,
+          FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        );
+      ]])
+    elseif type(db.execute) == "function" then
+      -- 別の一般的なAPI形式
+      db:execute([[
+        CREATE TABLE IF NOT EXISTS sessions (
+          id INTEGER PRIMARY KEY,
+          name TEXT UNIQUE,
+          created_at TIMESTAMP,
+          updated_at TIMESTAMP
+        );
+      ]])
+      
+      db:execute([[
+        CREATE TABLE IF NOT EXISTS session_buffers (
+          id INTEGER PRIMARY KEY,
+          session_id INTEGER,
+          buffer_path TEXT,
+          display_order INTEGER,
+          cursor_position TEXT,
+          is_active BOOLEAN,
+          FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
+        );
+      ]])
+    else
+      error("SQLite API is not compatible. Neither exec nor execute method found.")
+    end
+  end)
+  
+  if not success then
+    log.error("Failed to create tables: " .. create_err)
+    return nil
+  end
   
   log.debug("SQLite database initialized successfully")
   return db
