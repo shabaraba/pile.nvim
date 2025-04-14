@@ -21,19 +21,24 @@ local function initialize()
   log.debug("Using database path: " .. db_path)
 
   -- データベース接続
-  local db, err = pcall(function() 
+  local success, result = pcall(function() 
     return sqlite.new(db_path, {
       busy_timeout = 1000, -- 1秒のタイムアウト
     })
   end)
 
-  if not db or err then
-    log.error("Failed to initialize SQLite database: " .. (err or "Unknown error"))
+  if not success then
+    -- エラーが発生した場合
+    local err_msg = type(result) == "string" and result or "Unknown error"
+    log.error("Failed to initialize SQLite database: " .. err_msg)
     return nil
   end
+
+  -- 成功した場合、resultにはデータベース接続オブジェクトが入っている
+  local db = result
   
   -- テーブル作成は try-catch で囲む
-  local success, create_err = pcall(function()
+  local create_success, create_err = pcall(function()
     if type(db.exec) == "function" then
       -- 標準的なAPIの場合
       db:exec([[
@@ -81,8 +86,10 @@ local function initialize()
     end
   end)
   
-  if not success then
-    log.error("Failed to create tables: " .. create_err)
+  if not create_success then
+    -- エラーを適切に文字列として扱う
+    local err_msg = type(create_err) == "string" and create_err or "Unknown error"
+    log.error("Failed to create tables: " .. err_msg)
     return nil
   end
   
@@ -109,69 +116,79 @@ function M.save_session(name)
   if not db then
     return false
   end
+  
+  -- データベースのメソッドをチェック
+  local with_transaction = type(db.with_transaction) == "function" and db.with_transaction
+  if not with_transaction then
+    log.error("SQLite API is missing required 'with_transaction' method")
+    return false
+  end
 
-  local success = db:with_transaction(function()
-    -- 現在の時刻を取得
-    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
-    
-    -- 既存のセッションを確認
-    local existing = db:select("sessions", { where = { name = name } })
-    local session_id
-    
-    if #existing > 0 then
-      -- 既存のセッションを更新
-      session_id = existing[1].id
-      db:update("sessions", {
-        updated_at = timestamp
-      }, {
-        id = session_id
-      })
+  local success, result = pcall(function()
+    return db:with_transaction(function()
+      -- 現在の時刻を取得
+      local timestamp = os.date("%Y-%m-%d %H:%M:%S")
       
-      -- 既存のバッファ情報を削除
-      db:delete("session_buffers", {
-        session_id = session_id
-      })
-    else
-      -- 新しいセッションを作成
-      local result = db:insert("sessions", {
-        name = name,
-        created_at = timestamp,
-        updated_at = timestamp
-      })
-      session_id = result.lastInsertRowid
-    end
-    
-    -- バッファのリストを取得
-    local buffers = require("pile.buffers").get_list()
-    local current_buf = require("pile.buffers").get_current()
-    
-    -- 各バッファの情報を保存
-    for i, buffer in ipairs(buffers) do
-      -- カーソル位置を取得（現在のバッファのみ）
-      local cursor_position = ""
-      if buffer.buf == current_buf then
-        local cursor = vim.api.nvim_win_get_cursor(0)
-        cursor_position = string.format("%d,%d", cursor[1], cursor[2])
+      -- 既存のセッションを確認
+      local existing = db:select("sessions", { where = { name = name } })
+      local session_id
+      
+      if #existing > 0 then
+        -- 既存のセッションを更新
+        session_id = existing[1].id
+        db:update("sessions", {
+          updated_at = timestamp
+        }, {
+          id = session_id
+        })
+        
+        -- 既存のバッファ情報を削除
+        db:delete("session_buffers", {
+          session_id = session_id
+        })
+      else
+        -- 新しいセッションを作成
+        local result = db:insert("sessions", {
+          name = name,
+          created_at = timestamp,
+          updated_at = timestamp
+        })
+        session_id = result.lastInsertRowid
       end
       
-      -- バッファ情報をデータベースに保存
-      db:insert("session_buffers", {
-        session_id = session_id,
-        buffer_path = buffer.name,
-        display_order = i,
-        cursor_position = cursor_position,
-        is_active = (buffer.buf == current_buf)
-      })
-    end
-    
-    return true
+      -- バッファのリストを取得
+      local buffers = require("pile.buffers").get_list()
+      local current_buf = require("pile.buffers").get_current()
+      
+      -- 各バッファの情報を保存
+      for i, buffer in ipairs(buffers) do
+        -- カーソル位置を取得（現在のバッファのみ）
+        local cursor_position = ""
+        if buffer.buf == current_buf then
+          local cursor = vim.api.nvim_win_get_cursor(0)
+          cursor_position = string.format("%d,%d", cursor[1], cursor[2])
+        end
+        
+        -- バッファ情報をデータベースに保存
+        db:insert("session_buffers", {
+          session_id = session_id,
+          buffer_path = buffer.name,
+          display_order = i,
+          cursor_position = cursor_position,
+          is_active = (buffer.buf == current_buf)
+        })
+      end
+      
+      return true
+    end)
   end)
   
-  if success then
+  if success and result then
     log.info("Session '" .. name .. "' saved successfully")
     return true
   else
-    log.error("Failed to save session '" .. name .. "'")
+    local err_msg = type(result) == "string" and result or "Unknown error"
+    log.error("Failed to save session '" .. name .. "': " .. err_msg)
     return false
   end
 end
