@@ -206,7 +206,19 @@ function M.load_session(name)
   end
   
   -- セッションの存在を確認
-  local sessions = db:select("sessions", { where = { name = name } })
+  local sessions
+  local success, result = pcall(function()
+    return db:select("sessions", { where = { name = name } })
+  end)
+  
+  if not success then
+    local err_msg = type(result) == "string" and result or "Unknown error"
+    log.error("Failed to query session: " .. err_msg)
+    return false
+  end
+  
+  sessions = result
+  
   if #sessions == 0 then
     log.warn("Session '" .. name .. "' not found")
     return false
@@ -215,15 +227,28 @@ function M.load_session(name)
   local session_id = sessions[1].id
   
   -- バッファ情報を取得
-  local buffers = db:select("session_buffers", {
-    where = { session_id = session_id },
-    order_by = "display_order"
-  })
+  local buffers
+  success, result = pcall(function()
+    return db:select("session_buffers", {
+      where = { session_id = session_id },
+      order_by = "display_order"
+    })
+  end)
+  
+  if not success then
+    local err_msg = type(result) == "string" and result or "Unknown error"
+    log.error("Failed to query session buffers: " .. err_msg)
+    return false
+  end
+  
+  buffers = result
   
   if #buffers == 0 then
     log.warn("No buffers found in session '" .. name .. "'")
     return false
   end
+  
+  log.debug("Found " .. #buffers .. " buffers to restore")
   
   -- 現在の全バッファをクリア（オプション設定による）
   if Config.session.clear_buffers_on_load then
@@ -238,32 +263,67 @@ function M.load_session(name)
   
   -- バッファを読み込む
   local active_buffer = nil
-  for _, buffer_info in ipairs(buffers) do
+  local loaded_buffers = {}
+  
+  for i, buffer_info in ipairs(buffers) do
     -- ファイルが存在する場合のみ読み込み
     if vim.fn.filereadable(buffer_info.buffer_path) == 1 then
-      local buf = vim.cmd("edit " .. vim.fn.fnameescape(buffer_info.buffer_path))
+      log.debug("Loading buffer: " .. buffer_info.buffer_path)
+      
+      -- まずバッファを作成（editではなくbadd）
+      local buf_nr = vim.fn.bufadd(buffer_info.buffer_path)
+      
+      -- バッファを読み込み
+      if buf_nr ~= -1 and not vim.api.nvim_buf_is_loaded(buf_nr) then
+        -- bufloadはバッファを表示せずに読み込む
+        vim.fn.bufload(buf_nr)
+      end
+      
+      table.insert(loaded_buffers, {
+        buf = buf_nr,
+        is_active = buffer_info.is_active,
+        cursor = buffer_info.cursor_position,
+        path = buffer_info.buffer_path,
+      })
       
       -- アクティブバッファを記録
       if buffer_info.is_active then
-        active_buffer = {
-          buf = buf,
-          cursor = buffer_info.cursor_position
-        }
+        active_buffer = loaded_buffers[#loaded_buffers]
       end
     else
       log.warn("File not found: " .. buffer_info.buffer_path)
     end
   end
   
-  -- アクティブバッファにカーソルを設定
-  if active_buffer and active_buffer.cursor and active_buffer.cursor ~= "" then
-    local row, col = string.match(active_buffer.cursor, "(%d+),(%d+)")
-    if row and col then
-      vim.api.nvim_win_set_cursor(0, { tonumber(row), tonumber(col) })
+  -- すべてのバッファがロードされた後、アクティブなバッファを設定
+  if active_buffer then
+    -- アクティブバッファを現在のウィンドウに表示
+    vim.api.nvim_set_current_buf(active_buffer.buf)
+    
+    -- カーソル位置を設定
+    if active_buffer.cursor and active_buffer.cursor ~= "" then
+      local row, col = string.match(active_buffer.cursor, "(%d+),(%d+)")
+      if row and col then
+        -- カーソル位置の設定を試みる
+        pcall(function()
+          vim.api.nvim_win_set_cursor(0, { tonumber(row), tonumber(col) })
+        end)
+      end
+    end
+  elseif #loaded_buffers > 0 then
+    -- アクティブバッファがなければ最初のバッファを表示
+    vim.api.nvim_set_current_buf(loaded_buffers[1].buf)
+  end
+  
+  -- サイドバーを更新（存在する場合）
+  if package.loaded["pile.windows.sidebar"] then
+    local sidebar = require("pile.windows.sidebar")
+    if sidebar.is_open() then
+      sidebar.render()
     end
   end
   
-  log.info("Session '" .. name .. "' loaded successfully")
+  log.info("Session '" .. name .. "' loaded successfully with " .. #loaded_buffers .. " buffers")
   return true
 end
 
@@ -322,19 +382,33 @@ function M.auto_load_last_session()
   
   local db = get_db()
   if not db then
+    log.error("Failed to get database connection for auto-load")
     return false
   end
   
-  local sessions = db:select("sessions", { 
-    order_by = "updated_at DESC",
-    limit = 1
-  })
+  -- 最新のセッションを取得
+  local sessions
+  local success, result = pcall(function()
+    return db:select("sessions", { 
+      order_by = "updated_at DESC",
+      limit = 1
+    })
+  end)
+  
+  if not success then
+    local err_msg = type(result) == "string" and result or "Unknown error"
+    log.error("Failed to query sessions: " .. err_msg)
+    return false
+  end
+  
+  sessions = result
   
   if #sessions == 0 then
     log.debug("No sessions found for auto-load")
     return false
   end
   
+  log.info("Auto-loading last session: " .. sessions[1].name)
   return M.load_session(sessions[1].name)
 end
 
@@ -360,17 +434,29 @@ function M.setup_auto_save()
     save_interval * 1000,  -- 最初の実行までの時間（ミリ秒）
     save_interval * 1000,  -- 定期的な実行間隔（ミリ秒）
     vim.schedule_wrap(function()
+      log.debug("Auto-saving session...")
       M.save_session("auto_save")
     end)
   )
   
   -- 終了時の自動保存設定
   if Config.session.save_on_exit then
-    vim.api.nvim_create_autocmd("VimLeavePre", {
-      group = vim.api.nvim_create_augroup("PileSessionAutoSave", { clear = true }),
+    -- 既存のautocommandをクリア
+    local group = vim.api.nvim_create_augroup("PileSessionAutoSave", { clear = true })
+    
+    -- VimLeavePre よりも早いタイミングで発火する QuitPre を追加
+    vim.api.nvim_create_autocmd({"VimLeavePre", "QuitPre"}, {
+      group = group,
       callback = function()
-        M.save_session("auto_save")
+        log.info("Saving session before exit...")
+        local success = M.save_session("auto_save")
+        if success then
+          log.info("Exit session saved successfully")
+        else
+          log.error("Failed to save exit session")
+        end
       end,
+      desc = "Save pile.nvim session on exit",
     })
   end
   
@@ -394,11 +480,24 @@ function M.setup()
   -- 自動セッション機能の設定
   M.setup_auto_save()
   
-  -- 自動読み込み
+  -- 自動読み込み - VimEnterイベントで実行
   if Config.session.auto_load then
-    vim.defer_fn(function()
-      M.auto_load_last_session()
-    end, 100) -- 少し遅延させて他の初期化が完了してから実行
+    -- UIが完全に表示された後にセッションを読み込む
+    vim.api.nvim_create_autocmd("VimEnter", {
+      group = vim.api.nvim_create_augroup("PileSessionAutoLoad", { clear = true }),
+      callback = function()
+        -- 起動引数でファイルが指定されていない場合のみ自動読み込み
+        if vim.fn.argc() == 0 then
+          log.info("Triggering auto-load of session...")
+          vim.defer_fn(function()
+            M.auto_load_last_session()
+          end, 200) -- 少し遅延させて他の初期化が完了してから実行
+        else
+          log.debug("Skipping auto-load because files were specified in command line")
+        end
+      end,
+      desc = "Auto-load pile.nvim session",
+    })
   end
   
   log.info("SQLite session manager initialized")
