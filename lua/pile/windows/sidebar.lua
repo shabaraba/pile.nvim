@@ -1,5 +1,6 @@
 local globals = require 'pile.globals'
 local buffers = require 'pile.buffers'
+local log = require 'pile.log'
 
 local buffer_list = {}
 
@@ -18,10 +19,25 @@ local function set_buffer_lines()
   local lines = {}
 
   buffer_list = buffers.get_list()
+  
+  -- デバッグ情報: サイドバーに表示する前のバッファリスト
+  log.debug("Sidebar Buffer List Before Display:")
+  for i, buffer in ipairs(buffer_list) do
+    log.debug(string.format("[%d] buf: %d, name: %s, filename: %s", 
+                           i, buffer.buf, buffer.name, buffer.filename))
+  end
+  
   for _, buffer in ipairs(buffer_list) do
     table.insert(lines, buffer.filename)
   end
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, lines)
+  
+  -- デバッグ情報: 実際にサイドバーに表示された内容
+  local displayed_lines = vim.api.nvim_buf_get_lines(globals.sidebar_buf, 0, -1, false)
+  log.debug("Sidebar Displayed Lines:")
+  for i, line in ipairs(displayed_lines) do
+    log.debug(string.format("[%d] %s", i, line))
+  end
 end
 
 local function highlight_buffer(target_buffer)
@@ -42,7 +58,7 @@ local function set_keymaps()
   vim.keymap.set('n', 'dd', function()
     local current_win = vim.api.nvim_get_current_win()
     local current_line = vim.api.nvim_win_get_cursor(current_win)[1]
-    vim.notify(string.format("%d", current_line), vim.log.levels.INFO)
+    log.info(string.format("Current line: %d", current_line))
     local buffer = buffer_list[current_line]
     if buffer then
       vim.api.nvim_buf_delete(buffer.buf, { force = true })
@@ -78,8 +94,6 @@ function M.open()
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
 
   set_keymaps()
-  -- vim.api.nvim_buf_set_keymap(globals.sidebar_buf, 'n', '<CR>', ':lua require"pile.windows".select_to_open()<CR>',
-  --   { noremap = true, silent = true })
 end
 
 function M.is_opened()
@@ -111,6 +125,14 @@ function M.update()
   end
 
   buffer_list = buffers.get_list()
+  
+  -- デバッグ情報: 更新時のバッファリスト
+  log.debug("Update: Buffer List Before Display:")
+  for i, buffer in ipairs(buffer_list) do
+    log.debug(string.format("[%d] buf: %d, name: %s, filename: %s", 
+                           i, buffer.buf, buffer.name, buffer.filename))
+  end
+  
   local lines = {}
 
   for _, buffer in ipairs(buffer_list) do
@@ -120,12 +142,19 @@ function M.update()
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', true)
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
+  
+  -- デバッグ情報: 更新後のサイドバー表示内容
+  local displayed_lines = vim.api.nvim_buf_get_lines(globals.sidebar_buf, 0, -1, false)
+  log.debug("Update: Sidebar Displayed Lines:")
+  for i, line in ipairs(displayed_lines) do
+    log.debug(string.format("[%d] %s", i, line))
+  end
 
   -- 現在のバッファをハイライト
   for i, buffer in ipairs(buffer_list) do
-    -- vim.notify(string.format("%d, %d", buffer.buf, vim.api.nvim_get_current_buf()), vim.log.levels.INFO)
+    log.debug(string.format("Comparing buffer: %d with current: %d", buffer.buf, vim.api.nvim_get_current_buf()))
     if buffer.buf == vim.api.nvim_get_current_buf() then
-      -- vim.notify("here", vim.log.levels.INFO)
+      log.debug("Found current buffer for highlighting")
       vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
     end
   end
@@ -134,25 +163,42 @@ function M.update()
   end
 end
 
--- 自動的にバッファが追加されたらサイドバーを更新する
+-- 自動的にバッファが追加・変更・選択されたらサイドバーを更新する
 vim.api.nvim_create_autocmd("BufAdd", {
   pattern = "*",
   callback = function()
+    log.debug("BufAdd event - updating sidebar")
     M.update()
   end
 })
+
 vim.api.nvim_create_autocmd("BufLeave", {
   pattern = "*",
   callback = function()
+    log.debug("BufLeave event - updating sidebar")
     M.update()
   end
 })
+
 vim.api.nvim_create_autocmd("BufEnter", {
   pattern = "*",
   callback = function()
     if vim.api.nvim_get_current_buf() ~= globals.sidebar_buf then
-      -- vim.notify("bufenter", vim.log.levels.INFO)
+      log.debug("BufEnter event - updating sidebar")
       M.update()
+    end
+  end
+})
+
+-- oil.nvimでファイルを開いた後に特別な更新を行う
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = {"*"},
+  callback = function(ev)
+    if ev.match ~= "oil" and ev.match ~= "oilBrowser" then
+      log.debug("New file opened - updating sidebar with delay to catch oil.nvim changes")
+      vim.defer_fn(function() 
+        M.update() 
+      end, 200) -- 少し遅延させてoil.nvimの処理完了を待つ
     end
   end
 })
