@@ -105,6 +105,62 @@ local function get_db()
   return M._db
 end
 
+-- alpha.nvimの無効化（存在する場合）
+local function disable_alpha_if_needed()
+  -- alpha.nvimが存在するか確認
+  local has_alpha = package.loaded["alpha"] ~= nil
+  
+  if has_alpha then
+    log.debug("alpha.nvim detected, attempting to disable for session restore")
+    
+    -- alpha.nvimのバッファを検索して閉じる
+    local bufs = vim.api.nvim_list_bufs()
+    for _, buf in ipairs(bufs) do
+      if vim.api.nvim_buf_is_valid(buf) then
+        local buf_name = vim.api.nvim_buf_get_name(buf)
+        if buf_name:match("alpha") or vim.bo[buf].filetype == "alpha" then
+          log.debug("Found alpha buffer, closing it: " .. buf)
+          pcall(vim.api.nvim_buf_delete, buf, { force = true })
+        end
+      end
+    end
+    
+    -- alphaのautocommandを一時的に無効化
+    pcall(function()
+      local alpha_autocommands = vim.api.nvim_get_autocmds({
+        group = "alpha_autogroup",
+      })
+      
+      if alpha_autocommands and #alpha_autocommands > 0 then
+        log.debug("Temporarily disabling alpha.nvim autocommands")
+        vim.api.nvim_create_augroup("alpha_autogroup", { clear = true })
+      end
+    end)
+  end
+end
+
+-- セッションの読み込み前処理
+local function prepare_for_session_load()
+  -- alpha.nvimが邪魔にならないようにする
+  disable_alpha_if_needed()
+  
+  -- その他のプラグインのスタートアップ画面も閉じる
+  -- dashboard.nvim, startify, startupなど
+  local startup_filetypes = {"alpha", "dashboard", "startify", "startup"}
+  
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_valid(buf) then
+      local ft = vim.api.nvim_buf_get_option(buf, "filetype")
+      for _, startup_ft in ipairs(startup_filetypes) do
+        if ft == startup_ft then
+          pcall(vim.api.nvim_buf_delete, buf, { force = true })
+          break
+        end
+      end
+    end
+  end
+end
+
 -- セッションの保存
 function M.save_session(name)
   if not Config.session.enabled then
@@ -250,13 +306,16 @@ function M.load_session(name)
   
   log.debug("Found " .. #buffers .. " buffers to restore")
   
+  -- スタートアップ画面などを閉じる準備
+  prepare_for_session_load()
+  
   -- 現在の全バッファをクリア（オプション設定による）
   if Config.session.clear_buffers_on_load then
     log.debug("Clearing existing buffers")
     local current_buffers = vim.api.nvim_list_bufs()
     for _, buf in ipairs(current_buffers) do
       if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_get_option(buf, 'modified') == false then
-        vim.api.nvim_buf_delete(buf, { force = false })
+        pcall(vim.api.nvim_buf_delete, buf, { force = false })
       end
     end
   end
@@ -295,10 +354,15 @@ function M.load_session(name)
     end
   end
   
+  if #loaded_buffers == 0 then
+    log.warn("No buffers were loaded from session - all files missing?")
+    return false
+  end
+  
   -- すべてのバッファがロードされた後、アクティブなバッファを設定
   if active_buffer then
     -- アクティブバッファを現在のウィンドウに表示
-    vim.api.nvim_set_current_buf(active_buffer.buf)
+    pcall(vim.api.nvim_set_current_buf, active_buffer.buf)
     
     -- カーソル位置を設定
     if active_buffer.cursor and active_buffer.cursor ~= "" then
@@ -312,7 +376,7 @@ function M.load_session(name)
     end
   elseif #loaded_buffers > 0 then
     -- アクティブバッファがなければ最初のバッファを表示
-    vim.api.nvim_set_current_buf(loaded_buffers[1].buf)
+    pcall(vim.api.nvim_set_current_buf, loaded_buffers[1].buf)
   end
   
   -- サイドバーを更新（存在する場合）
@@ -323,8 +387,55 @@ function M.load_session(name)
     end
   end
   
+  -- セッションが読み込まれたフラグを設定
+  M._session_loaded = true
+  
+  -- 最後にalpha.nvimが再度起動しないようにする
+  vim.defer_fn(function()
+    disable_alpha_if_needed()
+  end, 50)
+  
   log.info("Session '" .. name .. "' loaded successfully with " .. #loaded_buffers .. " buffers")
   return true
+end
+
+-- 最後に更新されたセッションを自動的に読み込む
+function M.auto_load_last_session()
+  if not Config.session.enabled or not Config.session.auto_load then
+    log.debug("Auto-load session is disabled")
+    return false
+  end
+  
+  local db = get_db()
+  if not db then
+    log.error("Failed to get database connection for auto-load")
+    return false
+  end
+  
+  -- 最新のセッションを取得
+  local sessions
+  local success, result = pcall(function()
+    return db:select("sessions", { 
+      order_by = "updated_at DESC",
+      limit = 1
+    })
+  end)
+  
+  if not success then
+    local err_msg = type(result) == "string" and result or "Unknown error"
+    log.error("Failed to query sessions: " .. err_msg)
+    return false
+  end
+  
+  sessions = result
+  
+  if #sessions == 0 then
+    log.debug("No sessions found for auto-load")
+    return false
+  end
+  
+  log.info("Auto-loading last session: " .. sessions[1].name)
+  return M.load_session(sessions[1].name)
 end
 
 -- セッションの一覧を取得
@@ -371,45 +482,6 @@ function M.delete_session(name)
     log.error("Failed to delete session '" .. name .. "'")
     return false
   end
-end
-
--- 最後に更新されたセッションを自動的に読み込む
-function M.auto_load_last_session()
-  if not Config.session.enabled or not Config.session.auto_load then
-    log.debug("Auto-load session is disabled")
-    return false
-  end
-  
-  local db = get_db()
-  if not db then
-    log.error("Failed to get database connection for auto-load")
-    return false
-  end
-  
-  -- 最新のセッションを取得
-  local sessions
-  local success, result = pcall(function()
-    return db:select("sessions", { 
-      order_by = "updated_at DESC",
-      limit = 1
-    })
-  end)
-  
-  if not success then
-    local err_msg = type(result) == "string" and result or "Unknown error"
-    log.error("Failed to query sessions: " .. err_msg)
-    return false
-  end
-  
-  sessions = result
-  
-  if #sessions == 0 then
-    log.debug("No sessions found for auto-load")
-    return false
-  end
-  
-  log.info("Auto-loading last session: " .. sessions[1].name)
-  return M.load_session(sessions[1].name)
 end
 
 -- 自動保存機能
@@ -480,23 +552,70 @@ function M.setup()
   -- 自動セッション機能の設定
   M.setup_auto_save()
   
-  -- 自動読み込み - VimEnterイベントで実行
+  -- 自動読み込み - より早いタイミングで実行
   if Config.session.auto_load then
-    -- UIが完全に表示された後にセッションを読み込む
-    vim.api.nvim_create_autocmd("VimEnter", {
-      group = vim.api.nvim_create_augroup("PileSessionAutoLoad", { clear = true }),
+    -- VimEnterより前のUIReady/BaseLoadedなどのイベントを使用
+    -- UIReadyはVimEnterよりも早く発火するイベント (Neovim 0.8+)
+    local event = "UIEnter" -- Neovim 0.8未満の場合
+    if vim.fn.has("nvim-0.8") == 1 then
+      event = "UIReady" -- Neovim 0.8以上の場合
+    end
+    
+    local group = vim.api.nvim_create_augroup("PileSessionAutoLoad", { clear = true })
+    vim.api.nvim_create_autocmd(event, {
+      group = group,
       callback = function()
         -- 起動引数でファイルが指定されていない場合のみ自動読み込み
         if vim.fn.argc() == 0 then
-          log.info("Triggering auto-load of session...")
-          vim.defer_fn(function()
-            M.auto_load_last_session()
-          end, 200) -- 少し遅延させて他の初期化が完了してから実行
+          log.info("Triggering auto-load of session (early) on " .. event .. "...")
+          
+          -- スタートアップ画面などを閉じる準備
+          prepare_for_session_load()
+          
+          -- 即座にセッションを読み込む（遅延なし）
+          local loaded = M.auto_load_last_session()
+          
+          if loaded then
+            -- セッションが読み込まれた場合、alpha.nvimなどが後から表示されないように対策
+            vim.api.nvim_create_autocmd("VimEnter", {
+              group = group,
+              callback = function()
+                -- alpha.nvimが再度表示されないようにする
+                disable_alpha_if_needed()
+                
+                -- セッションが読み込まれたら改めて通知
+                vim.defer_fn(function()
+                  vim.notify("Session restored successfully", vim.log.levels.INFO)
+                end, 100)
+              end,
+              once = true,
+            })
+          end
         else
           log.debug("Skipping auto-load because files were specified in command line")
         end
       end,
-      desc = "Auto-load pile.nvim session",
+      desc = "Auto-load pile.nvim session (early)",
+      once = true, -- 一度だけ実行
+    })
+    
+    -- 追加のフォールバック - VimEnterでも実行（念のため）
+    vim.api.nvim_create_autocmd("VimEnter", {
+      group = group,
+      callback = function()
+        -- 起動引数でファイルが指定されていない場合のみ自動読み込み
+        if vim.fn.argc() == 0 and not M._session_loaded then
+          log.info("Fallback: Triggering auto-load of session on VimEnter...")
+          
+          -- スタートアップ画面などを閉じる準備
+          prepare_for_session_load()
+          
+          -- セッション読み込み
+          M.auto_load_last_session()
+        end
+      end,
+      desc = "Auto-load pile.nvim session (fallback)",
+      once = true, -- 一度だけ実行
     })
   end
   
