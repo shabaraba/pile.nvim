@@ -2,6 +2,7 @@ local globals = require('pile.globals')
 local window = require('pile.windows')
 local popup = require('pile.windows.popup')
 local log = require('pile.log')
+local config = require('pile.config')
 local M = {}
 
 local selected_buffer = nil
@@ -80,12 +81,14 @@ function M.get_list()
     -- 1. バッファに名前があること
     -- 2. ポップアップ、通知、特殊バッファでないこと
     -- 3. oil.nvimの一時バッファでないこと
-    -- 4. 表示されているか、特定の条件を満たすバッファであること
+    -- 4. ターミナルバッファのフィルタリング（設定による）
+    -- 5. 表示されているか、特定の条件を満たすバッファであること
     if info.filename ~= "" and 
        info.buftype ~= 'popup' and 
        info.filetype ~= 'notify' and 
        info.buftype ~= 'nofile' and
        not is_oil_temp_buffer(info.buf, info.name, info.filetype) and
+       (config.display.show_terminal_buffers or info.buftype ~= 'terminal') and
        (info.displayed or info.name:match("%.%w+$")) then -- 表示されているか、拡張子を持つファイル
       
       -- 同名ファイルの数をカウント

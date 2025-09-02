@@ -3,6 +3,9 @@ local M = {
   debug = {
     enabled = false, -- デフォルトではデバッグログを無効化
     level = "info",  -- デバッグレベル: "error", "warn", "info", "debug", "trace"
+  },
+  display = {
+    show_terminal_buffers = false, -- ターミナルバッファを表示するかどうか
   }
 }
 
@@ -35,6 +38,11 @@ M.setup = function(opts)
   if opts and opts.debug ~= nil then
     M.debug.enabled = opts.debug.enabled ~= nil and opts.debug.enabled or M.debug.enabled
     M.debug.level = opts.debug.level ~= nil and opts.debug.level or M.debug.level
+  end
+
+  -- 表示設定
+  if opts and opts.display ~= nil then
+    M.display.show_terminal_buffers = opts.display.show_terminal_buffers ~= nil and opts.display.show_terminal_buffers or M.display.show_terminal_buffers
   end
 
   -- バッファハイライト設定
