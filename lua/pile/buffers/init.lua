@@ -2,6 +2,7 @@ local globals = require('pile.globals')
 local window = require('pile.windows')
 local popup = require('pile.windows.popup')
 local log = require('pile.log')
+local git = require('pile.git')
 local M = {}
 
 local selected_buffer = nil
@@ -81,24 +82,29 @@ function M.get_list()
     -- 2. ポップアップ、通知、特殊バッファでないこと
     -- 3. oil.nvimの一時バッファでないこと
     -- 4. 表示されているか、特定の条件を満たすバッファであること
-    if info.filename ~= "" and 
-       info.buftype ~= 'popup' and 
-       info.filetype ~= 'notify' and 
+    if info.filename ~= "" and
+       info.buftype ~= 'popup' and
+       info.filetype ~= 'notify' and
        info.buftype ~= 'nofile' and
        not is_oil_temp_buffer(info.buf, info.name, info.filetype) and
        (info.displayed or info.name:match("%.%w+$")) then -- 表示されているか、拡張子を持つファイル
-      
+
+      -- Detect git worktree for this buffer
+      local worktree = git.get_worktree_for_file(info.name)
+
       -- 同名ファイルの数をカウント
       filenames[info.filename] = (filenames[info.filename] or 0) + 1
-      table.insert(buffer_list, { 
-        buf = info.buf, 
-        name = info.name, 
-        filename = info.filename 
+      table.insert(buffer_list, {
+        buf = info.buf,
+        name = info.name,
+        filename = info.filename,
+        worktree = worktree
       })
-      
+
       -- デバッグ情報: 初期バッファ追加時
-      log.debug(string.format("追加したバッファ: buf=%d, name=%s, filename=%s", 
-                             info.buf, info.name, info.filename))
+      log.debug(string.format("追加したバッファ: buf=%d, name=%s, filename=%s, worktree=%s",
+                             info.buf, info.name, info.filename,
+                             worktree and git.get_worktree_display_name(worktree) or "none"))
     end
   end
   
@@ -236,10 +242,14 @@ local function open_selected_callback(choice, idx)
   popup.unmount()
 end
 
--- @param props {available_windows: list}
+-- @param props {available_windows: list, line: number (optional)}
 function M.open_selected(props)
-  local cursor = vim.api.nvim_win_get_cursor(globals.sidebar_win)
-  local line = cursor[1]
+  local line = props.line
+  if not line then
+    local cursor = vim.api.nvim_win_get_cursor(globals.sidebar_win)
+    line = cursor[1]
+  end
+
   selected_buffer = M.get_list()[line]
   if not selected_buffer then
     print("No buffer selected.")

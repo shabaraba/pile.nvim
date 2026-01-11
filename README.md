@@ -16,6 +16,7 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 
 - Vertical sidebar listing all open buffers.
 - Easily switch between buffers with keyboard shortcuts.
+- **Git worktree visual separation** - Automatically groups buffers by git worktree with visual separators.
 - Editable buffer names within the sidebar for quick renaming.(not implemented yet)
 - Automatically updates file names when a buffer is renamed.(not implemented yet)
 - LSP integration: Automatically updates import paths when a file is renamed.(not implemented yet)
@@ -61,23 +62,59 @@ Plug 'shabaraba/pile.nvim'
 
 ## Setup and Configuration
 
-<!--
-
-To configure pile.nvim, add the following setup function to your Neovim config.
+To configure pile.nvim, add the following setup function to your Neovim config:
 
 ```lua
 require('pile').setup({
-  -- Configuration options
-  width = 30,              -- Width of the sidebar
-  highlight_current = true, -- Highlight the current buffer in the sidebar
-  keymaps = {
-    open_buffer = '<CR>',   -- Keymap to open the buffer
-    close_sidebar = 'q',    -- Keymap to close the sidebar
+  -- Debug settings
+  debug = {
+    enabled = false,  -- Enable debug logging
+    level = "info",   -- Log level: "error", "warn", "info", "debug", "trace"
+  },
+
+  -- Git worktree display settings
+  worktree = {
+    enabled = true,  -- Enable worktree visual separation
+    separator = {
+      enabled = true,      -- Show separator lines between worktrees
+      style = "─",         -- Character to use for separator line
+      show_branch = true,  -- Show branch/worktree name in separator
+    },
+    highlight = {
+      separator = {
+        fg = "#61AFEF",  -- Blue color for separator
+        bold = true,
+      },
+      branch = {
+        fg = "#98C379",  -- Green color for branch name
+        bold = true,
+      },
+    },
   },
 })
 ```
 
--->
+### Git Worktree Visual Separation
+
+When working with multiple git worktrees, pile.nvim automatically detects and groups buffers by their associated worktree. Each worktree group is separated by a visual separator line that displays the branch name.
+
+**Example sidebar with worktrees:**
+```
+─────── main ───────
+config.lua
+init.lua
+──── feature/ui ────
+component.lua
+styles.lua
+```
+
+You can customize:
+- `worktree.enabled` - Enable/disable worktree grouping
+- `worktree.separator.enabled` - Show/hide separator lines
+- `worktree.separator.style` - Character used for separator line
+- `worktree.separator.show_branch` - Display branch name in separator
+- `worktree.highlight.separator.fg` - Color of separator line
+- `worktree.highlight.branch.fg` - Color of branch name
 
 ## Key Features:
 

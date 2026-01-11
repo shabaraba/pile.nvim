@@ -1,8 +1,12 @@
 local globals = require 'pile.globals'
 local buffers = require 'pile.buffers'
 local log = require 'pile.log'
+local config = require 'pile.config'
+local git = require 'pile.git'
 
 local buffer_list = {}
+-- Map from display line number to buffer index in buffer_list
+local line_to_buffer = {}
 
 local M = {}
 
@@ -17,49 +21,151 @@ end
 
 local function set_buffer_lines()
   local lines = {}
+  line_to_buffer = {}
 
   buffer_list = buffers.get_list()
-  
+
   -- デバッグ情報: サイドバーに表示する前のバッファリスト
   log.debug("Sidebar Buffer List Before Display:")
   for i, buffer in ipairs(buffer_list) do
-    log.debug(string.format("[%d] buf: %d, name: %s, filename: %s", 
-                           i, buffer.buf, buffer.name, buffer.filename))
+    log.debug(string.format("[%d] buf: %d, name: %s, filename: %s, worktree: %s",
+                           i, buffer.buf, buffer.name, buffer.filename,
+                           buffer.worktree and git.get_worktree_display_name(buffer.worktree) or "none"))
   end
-  
-  for _, buffer in ipairs(buffer_list) do
-    table.insert(lines, buffer.filename)
+
+  -- Check if worktree grouping is enabled
+  if config.worktree and config.worktree.enabled then
+    -- Group buffers by worktree
+    local worktree_groups = {}
+    local worktree_order = {}
+
+    for i, buffer in ipairs(buffer_list) do
+      local wt_key = "none"
+      if buffer.worktree then
+        wt_key = buffer.worktree.path
+      end
+
+      if not worktree_groups[wt_key] then
+        worktree_groups[wt_key] = {
+          worktree = buffer.worktree,
+          buffers = {},
+          indices = {}
+        }
+        table.insert(worktree_order, wt_key)
+      end
+
+      table.insert(worktree_groups[wt_key].buffers, buffer)
+      table.insert(worktree_groups[wt_key].indices, i)
+    end
+
+    -- Build lines with worktree separators
+    local line_num = 1
+    for group_idx, wt_key in ipairs(worktree_order) do
+      local group = worktree_groups[wt_key]
+
+      -- Add separator line if enabled and not the first group
+      if config.worktree.separator and config.worktree.separator.enabled then
+        local separator_line = ""
+
+        if config.worktree.separator.show_branch and group.worktree then
+          local branch_name = git.get_worktree_display_name(group.worktree)
+          local sep_char = config.worktree.separator.style or "─"
+          local max_width = 28  -- Leave some padding
+          local branch_text = " " .. branch_name .. " "
+          local remaining_width = max_width - #branch_text
+
+          if remaining_width > 0 then
+            local left_width = math.floor(remaining_width / 2)
+            local right_width = remaining_width - left_width
+            separator_line = string.rep(sep_char, left_width) .. branch_text .. string.rep(sep_char, right_width)
+          else
+            separator_line = branch_text:sub(1, max_width)
+          end
+        else
+          separator_line = string.rep(config.worktree.separator.style or "─", 28)
+        end
+
+        table.insert(lines, separator_line)
+        -- Separator lines don't map to any buffer
+        line_to_buffer[line_num] = nil
+        line_num = line_num + 1
+      end
+
+      -- Add buffer lines for this worktree
+      for buf_idx, buffer in ipairs(group.buffers) do
+        table.insert(lines, buffer.filename)
+        -- Map this line to the original buffer index
+        line_to_buffer[line_num] = group.indices[buf_idx]
+        line_num = line_num + 1
+      end
+    end
+  else
+    -- No worktree grouping - display buffers as before
+    for i, buffer in ipairs(buffer_list) do
+      table.insert(lines, buffer.filename)
+      line_to_buffer[i] = i
+    end
   end
+
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, lines)
-  
+
   -- デバッグ情報: 実際にサイドバーに表示された内容
   local displayed_lines = vim.api.nvim_buf_get_lines(globals.sidebar_buf, 0, -1, false)
   log.debug("Sidebar Displayed Lines:")
   for i, line in ipairs(displayed_lines) do
-    log.debug(string.format("[%d] %s", i, line))
+    log.debug(string.format("[%d] %s (maps to buffer %s)", i, line, line_to_buffer[i] or "separator"))
   end
 end
 
 local function highlight_buffer(target_buffer)
   buffer_list = buffers.get_list()
-  for i, buffer in ipairs(buffer_list) do
-    if buffer.buf == target_buffer then
-      vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
+
+  -- Find which display line corresponds to the target buffer
+  for display_line, buffer_idx in pairs(line_to_buffer) do
+    if buffer_idx and buffer_list[buffer_idx] and buffer_list[buffer_idx].buf == target_buffer then
+      vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", display_line - 1, 0, -1)
+    end
+  end
+
+  -- Apply worktree separator highlighting if enabled
+  if config.worktree and config.worktree.enabled and config.worktree.separator and config.worktree.separator.enabled then
+    for display_line = 1, vim.api.nvim_buf_line_count(globals.sidebar_buf) do
+      if not line_to_buffer[display_line] then
+        -- This is a separator line
+        vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "PileWorktreeSeparator", display_line - 1, 0, -1)
+      end
     end
   end
 end
 
 local function set_keymaps()
   vim.keymap.set('n', '<CR>', function()
+    local current_win = vim.api.nvim_get_current_win()
+    local current_line = vim.api.nvim_win_get_cursor(current_win)[1]
+    local buffer_idx = line_to_buffer[current_line]
+
+    if not buffer_idx then
+      -- Cursor is on a separator line, do nothing
+      return
+    end
+
     local available_windows = require('pile.windows').get_available_windows()
-    require 'pile.buffers'.open_selected({ available_windows = available_windows })
+    require 'pile.buffers'.open_selected({ available_windows = available_windows, line = buffer_idx })
   end, { buffer = globals.sidebar_buf, noremap = true, silent = true })
 
   vim.keymap.set('n', 'dd', function()
     local current_win = vim.api.nvim_get_current_win()
     local current_line = vim.api.nvim_win_get_cursor(current_win)[1]
-    log.info(string.format("Current line: %d", current_line))
-    local buffer = buffer_list[current_line]
+    local buffer_idx = line_to_buffer[current_line]
+
+    log.info(string.format("Current line: %d, buffer_idx: %s", current_line, buffer_idx or "none"))
+
+    if not buffer_idx then
+      -- Cursor is on a separator line, do nothing
+      return
+    end
+
+    local buffer = buffer_list[buffer_idx]
     if buffer then
       vim.api.nvim_buf_delete(buffer.buf, { force = true })
       M.update()
@@ -69,11 +175,14 @@ local function set_keymaps()
   vim.keymap.set('x', 'd', function()
     local start_line = vim.fn.getpos('v')[2] -- bufnr, lnum, col, offのテーブル, vはビジュアルモードの選択開始位置
     local end_line = vim.fn.getpos('.')[2] -- bufnr, lnum, col, offのテーブル, .はビジュアルモードの選択終了位置
-    
+
     for line = start_line, end_line do
-      local selected_buffer = buffer_list[line]
-      if selected_buffer then
-        vim.api.nvim_buf_delete(selected_buffer.buf, { force = true })
+      local buffer_idx = line_to_buffer[line]
+      if buffer_idx then
+        local selected_buffer = buffer_list[buffer_idx]
+        if selected_buffer then
+          vim.api.nvim_buf_delete(selected_buffer.buf, { force = true })
+        end
       end
     end
     M.update()
@@ -125,39 +234,125 @@ function M.update()
   end
 
   buffer_list = buffers.get_list()
-  
+  line_to_buffer = {}
+
   -- デバッグ情報: 更新時のバッファリスト
   log.debug("Update: Buffer List Before Display:")
   for i, buffer in ipairs(buffer_list) do
-    log.debug(string.format("[%d] buf: %d, name: %s, filename: %s", 
-                           i, buffer.buf, buffer.name, buffer.filename))
+    log.debug(string.format("[%d] buf: %d, name: %s, filename: %s, worktree: %s",
+                           i, buffer.buf, buffer.name, buffer.filename,
+                           buffer.worktree and git.get_worktree_display_name(buffer.worktree) or "none"))
   end
-  
+
   local lines = {}
 
-  for _, buffer in ipairs(buffer_list) do
-    table.insert(lines, buffer.filename)
+  -- Check if worktree grouping is enabled
+  if config.worktree and config.worktree.enabled then
+    -- Group buffers by worktree
+    local worktree_groups = {}
+    local worktree_order = {}
+
+    for i, buffer in ipairs(buffer_list) do
+      local wt_key = "none"
+      if buffer.worktree then
+        wt_key = buffer.worktree.path
+      end
+
+      if not worktree_groups[wt_key] then
+        worktree_groups[wt_key] = {
+          worktree = buffer.worktree,
+          buffers = {},
+          indices = {}
+        }
+        table.insert(worktree_order, wt_key)
+      end
+
+      table.insert(worktree_groups[wt_key].buffers, buffer)
+      table.insert(worktree_groups[wt_key].indices, i)
+    end
+
+    -- Build lines with worktree separators
+    local line_num = 1
+    for group_idx, wt_key in ipairs(worktree_order) do
+      local group = worktree_groups[wt_key]
+
+      -- Add separator line if enabled
+      if config.worktree.separator and config.worktree.separator.enabled then
+        local separator_line = ""
+
+        if config.worktree.separator.show_branch and group.worktree then
+          local branch_name = git.get_worktree_display_name(group.worktree)
+          local sep_char = config.worktree.separator.style or "─"
+          local max_width = 28  -- Leave some padding
+          local branch_text = " " .. branch_name .. " "
+          local remaining_width = max_width - #branch_text
+
+          if remaining_width > 0 then
+            local left_width = math.floor(remaining_width / 2)
+            local right_width = remaining_width - left_width
+            separator_line = string.rep(sep_char, left_width) .. branch_text .. string.rep(sep_char, right_width)
+          else
+            separator_line = branch_text:sub(1, max_width)
+          end
+        else
+          separator_line = string.rep(config.worktree.separator.style or "─", 28)
+        end
+
+        table.insert(lines, separator_line)
+        -- Separator lines don't map to any buffer
+        line_to_buffer[line_num] = nil
+        line_num = line_num + 1
+      end
+
+      -- Add buffer lines for this worktree
+      for buf_idx, buffer in ipairs(group.buffers) do
+        table.insert(lines, buffer.filename)
+        -- Map this line to the original buffer index
+        line_to_buffer[line_num] = group.indices[buf_idx]
+        line_num = line_num + 1
+      end
+    end
+  else
+    -- No worktree grouping - display buffers as before
+    for i, buffer in ipairs(buffer_list) do
+      table.insert(lines, buffer.filename)
+      line_to_buffer[i] = i
+    end
   end
 
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', true)
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, lines)
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
-  
+
   -- デバッグ情報: 更新後のサイドバー表示内容
   local displayed_lines = vim.api.nvim_buf_get_lines(globals.sidebar_buf, 0, -1, false)
   log.debug("Update: Sidebar Displayed Lines:")
   for i, line in ipairs(displayed_lines) do
-    log.debug(string.format("[%d] %s", i, line))
+    log.debug(string.format("[%d] %s (maps to buffer %s)", i, line, line_to_buffer[i] or "separator"))
   end
 
   -- 現在のバッファをハイライト
-  for i, buffer in ipairs(buffer_list) do
-    log.debug(string.format("Comparing buffer: %d with current: %d", buffer.buf, vim.api.nvim_get_current_buf()))
-    if buffer.buf == vim.api.nvim_get_current_buf() then
-      log.debug("Found current buffer for highlighting")
-      vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
+  local current_buf = vim.api.nvim_get_current_buf()
+  for display_line, buffer_idx in pairs(line_to_buffer) do
+    if buffer_idx and buffer_list[buffer_idx] then
+      log.debug(string.format("Comparing buffer: %d with current: %d", buffer_list[buffer_idx].buf, current_buf))
+      if buffer_list[buffer_idx].buf == current_buf then
+        log.debug("Found current buffer for highlighting")
+        vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", display_line - 1, 0, -1)
+      end
     end
   end
+
+  -- Apply worktree separator highlighting if enabled
+  if config.worktree and config.worktree.enabled and config.worktree.separator and config.worktree.separator.enabled then
+    for display_line = 1, vim.api.nvim_buf_line_count(globals.sidebar_buf) do
+      if not line_to_buffer[display_line] then
+        -- This is a separator line
+        vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "PileWorktreeSeparator", display_line - 1, 0, -1)
+      end
+    end
+  end
+
   if globals.sidebar_win and vim.api.nvim_win_is_valid(globals.sidebar_win) then
     vim.api.nvim_win_set_width(globals.sidebar_win, 30)
   end
