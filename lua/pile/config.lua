@@ -46,7 +46,63 @@ M.setup = function(opts)
       },
     },
   }
-  
+
+  -- Git worktree display settings
+  M.worktree = {
+    enabled = true,  -- Enable worktree visual separation
+    separator = {
+      enabled = true,  -- Show separator lines between worktrees
+      style = "─",  -- Character to use for separator line
+      show_branch = true,  -- Show branch/worktree name in separator
+    },
+    highlight = {
+      separator = {
+        fg = "#61AFEF",  -- Blue color for separator
+        bold = true,
+      },
+      branch = {
+        fg = "#98C379",  -- Green color for branch name
+        bold = true,
+      },
+    },
+  }
+
+  -- Apply user-provided worktree settings
+  if opts and opts.worktree then
+    if opts.worktree.enabled ~= nil then
+      M.worktree.enabled = opts.worktree.enabled
+    end
+    if opts.worktree.separator then
+      if opts.worktree.separator.enabled ~= nil then
+        M.worktree.separator.enabled = opts.worktree.separator.enabled
+      end
+      if opts.worktree.separator.style ~= nil then
+        M.worktree.separator.style = opts.worktree.separator.style
+      end
+      if opts.worktree.separator.show_branch ~= nil then
+        M.worktree.separator.show_branch = opts.worktree.separator.show_branch
+      end
+    end
+    if opts.worktree.highlight then
+      if opts.worktree.highlight.separator then
+        if opts.worktree.highlight.separator.fg ~= nil then
+          M.worktree.highlight.separator.fg = opts.worktree.highlight.separator.fg
+        end
+        if opts.worktree.highlight.separator.bold ~= nil then
+          M.worktree.highlight.separator.bold = opts.worktree.highlight.separator.bold
+        end
+      end
+      if opts.worktree.highlight.branch then
+        if opts.worktree.highlight.branch.fg ~= nil then
+          M.worktree.highlight.branch.fg = opts.worktree.highlight.branch.fg
+        end
+        if opts.worktree.highlight.branch.bold ~= nil then
+          M.worktree.highlight.branch.bold = opts.worktree.highlight.branch.bold
+        end
+      end
+    end
+  end
+
   -- その他の設定があれば追加
 end
 

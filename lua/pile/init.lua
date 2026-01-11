@@ -40,6 +40,18 @@ function M.setup(opts)
     fg = "White",
   })
 
+  -- Git worktree separator highlight
+  if Config.worktree and Config.worktree.enabled then
+    vim.api.nvim_set_hl(0, "PileWorktreeSeparator", {
+      fg = Config.worktree.highlight.separator.fg,
+      bold = Config.worktree.highlight.separator.bold,
+    })
+    vim.api.nvim_set_hl(0, "PileWorktreeBranch", {
+      fg = Config.worktree.highlight.branch.fg,
+      bold = Config.worktree.highlight.branch.bold,
+    })
+  end
+
   vim.api.nvim_create_user_command("PileToggle", M.toggle_sidebar, { desc = "toggle pile window" })
   vim.api.nvim_create_user_command("PileGoToNextBuffer", M.switch_to_next_buffer, { desc = "go to next buffer" })
   vim.api.nvim_create_user_command("PileGoToPrevBuffer", M.switch_to_prev_buffer, { desc = "go to prev buffer" })
