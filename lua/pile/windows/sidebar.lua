@@ -1,8 +1,12 @@
 local globals = require 'pile.globals'
 local buffers = require 'pile.buffers'
 local log = require 'pile.log'
+local window_colors = require 'pile.window_colors'
+local config = require 'pile.config'
 
 local buffer_list = {}
+-- 名前空間をextmarkに使用
+local ns_id = vim.api.nvim_create_namespace('pile_window_indicators')
 
 local M = {}
 
@@ -12,7 +16,7 @@ local function create_sidebar()
   globals.sidebar_win = vim.api.nvim_get_current_win()
 
   vim.api.nvim_win_set_buf(globals.sidebar_win, globals.sidebar_buf)
-  vim.api.nvim_win_set_width(globals.sidebar_win, 30)
+  vim.api.nvim_win_set_width(globals.sidebar_win, 35)
 end
 
 local function set_buffer_lines()
@@ -45,6 +49,38 @@ local function highlight_buffer(target_buffer)
   for i, buffer in ipairs(buffer_list) do
     if buffer.buf == target_buffer then
       vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
+    end
+  end
+end
+
+-- ウィンドウインジケーターを適用する関数
+local function apply_window_indicators()
+  if not config.window_indicator or not config.window_indicator.enabled then
+    return
+  end
+
+  -- 既存のextmarkをクリア
+  vim.api.nvim_buf_clear_namespace(globals.sidebar_buf, ns_id, 0, -1)
+
+  -- 無効なウィンドウの色割り当てをクリーンアップ
+  window_colors.cleanup()
+
+  -- 各バッファに対してインジケーターを設定
+  for i, buffer in ipairs(buffer_list) do
+    if buffer.window_id and buffer.window_id ~= globals.sidebar_win then
+      -- ウィンドウに色を割り当て
+      local color = window_colors.assign_color(buffer.window_id, config.window_indicator.colors)
+      if color then
+        -- ハイライトグループ名を生成
+        local hl_group = string.format("PileWindowIndicator_%d", buffer.window_id)
+
+        -- extmarkを使ってバーチャルテキストを追加（左側に色付きのインジケーター）
+        vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, i - 1, 0, {
+          virt_text = {{"█ ", hl_group}},
+          virt_text_pos = "inline",
+          priority = 100,
+        })
+      end
     end
   end
 end
@@ -91,6 +127,7 @@ function M.open()
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', true)
   set_buffer_lines()
   highlight_buffer(buffers.get_current())
+  apply_window_indicators()
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
 
   set_keymaps()
@@ -158,8 +195,12 @@ function M.update()
       vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
     end
   end
+
+  -- ウィンドウインジケーターを適用
+  apply_window_indicators()
+
   if globals.sidebar_win and vim.api.nvim_win_is_valid(globals.sidebar_win) then
-    vim.api.nvim_win_set_width(globals.sidebar_win, 30)
+    vim.api.nvim_win_set_width(globals.sidebar_win, 35)
   end
 end
 

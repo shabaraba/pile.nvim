@@ -46,7 +46,24 @@ M.setup = function(opts)
       },
     },
   }
-  
+
+  -- ウィンドウインジケーター設定
+  M.window_indicator = {
+    enabled = set_default("window_indicator.enabled", true),
+    colors = set_default("window_indicator.colors", {
+      "#E06C75", -- Red
+      "#98C379", -- Green
+      "#E5C07B", -- Yellow
+      "#61AFEF", -- Blue
+      "#C678DD", -- Magenta
+      "#56B6C2", -- Cyan
+      "#D19A66", -- Orange
+      "#ABB2BF", -- Light Gray
+      "#E06C75", -- Red (repeat)
+      "#98C379", -- Green (repeat)
+    }),
+  }
+
   -- その他の設定があれば追加
 end
 
