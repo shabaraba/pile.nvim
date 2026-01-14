@@ -2,6 +2,9 @@ local globals = require('pile.globals')
 local window = require('pile.windows')
 local popup = require('pile.windows.popup')
 local log = require('pile.log')
+local history = require('pile.features.history')
+local sort = require('pile.features.sort')
+local config = require('pile.config')
 
 local M = {}
 
@@ -154,6 +157,11 @@ function M.get_list()
     log.debug(string.format("[%d] buf: %d, filename: %s", i, buffer.buf, buffer.filename))
   end
 
+  if config.sort and config.sort.method then
+    sort.set_mode(config.sort.method)
+    buffer_list = sort.sort_buffers(buffer_list)
+  end
+
   return buffer_list
 end
 
@@ -164,6 +172,9 @@ end
 local function open_selected_callback(choice)
   if choice then
     window.set_buffer(choice, selected_buffer.buf)
+    if config.history and config.history.enabled then
+      history.record(selected_buffer.buf)
+    end
   end
   popup.unmount()
 end
@@ -180,10 +191,16 @@ function M.open_selected(props)
   local window_count = #props.available_windows
   if window_count == 1 then
     window.set_buffer(props.available_windows[1], selected_buffer.buf)
+    if config.history and config.history.enabled then
+      history.record(selected_buffer.buf)
+    end
   elseif window_count > 1 then
     popup.select_window(props.available_windows, open_selected_callback)
   else
     window.set_buffer(nil, selected_buffer.buf)
+    if config.history and config.history.enabled then
+      history.record(selected_buffer.buf)
+    end
   end
 end
 

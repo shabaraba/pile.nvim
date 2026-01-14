@@ -7,6 +7,8 @@ local M = {
 }
 
 M.setup = function(opts)
+  opts = opts or {}
+
   -- 設定項目がnilの場合のデフォルト値を設定する関数
   local function set_default(path, default_value)
     local table_path = opts
@@ -14,7 +16,7 @@ M.setup = function(opts)
     for part in string.gmatch(path, "[^.]+") do
       table.insert(levels, part)
     end
-    
+
     for i = 1, #levels - 1 do
       local key = levels[i]
       if table_path[key] == nil then
@@ -22,12 +24,12 @@ M.setup = function(opts)
       end
       table_path = table_path[key]
     end
-    
+
     local final_key = levels[#levels]
     if table_path[final_key] == nil then
       table_path[final_key] = default_value
     end
-    
+
     return table_path[final_key]
   end
 
@@ -64,7 +66,16 @@ M.setup = function(opts)
     }),
   }
 
-  -- その他の設定があれば追加
+  -- 履歴管理設定
+  M.history = {
+    enabled = set_default("history.enabled", true),
+    auto_cleanup_days = set_default("history.auto_cleanup_days", 30),
+  }
+
+  -- ソート設定
+  M.sort = {
+    method = set_default("sort.method", "buffer_number"), -- "buffer_number", "mru", "frequency"
+  }
 end
 
 return M
