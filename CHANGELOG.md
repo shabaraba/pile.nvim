@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.2.0] (2026-01-14)
+
+### Features
+
+* **session**: Add session management with auto-save/restore functionality
+* **session**: Implement named sessions for multiple project workflows
+* **reorder**: Add buffer reordering with persistent order preservation
+* **storage**: Add JSON-based data persistence layer (replacing SQLite)
+* **api**: Add new commands for session management and buffer reordering
+
+### Breaking Changes
+
+* Remove history tracking and MRU sort features (replaced with session management)
+* Change config structure: `history` and `sort` replaced with `session`
+
+### Architecture
+
+* Refactor codebase into layered architecture (storage, features, ui)
+* Remove unused SQLite dependency
+* Simplify buffer management logic
+
+### Documentation
+
+* Update README with session management features
+* Add comprehensive usage examples for sessions and reordering
+
 ## [1.1.0](https://github.com/shabaraba/pile.nvim/compare/v1.0.0...v1.1.0) (2026-01-14)
 
 

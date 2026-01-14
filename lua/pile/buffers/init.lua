@@ -2,8 +2,6 @@ local globals = require('pile.globals')
 local window = require('pile.windows')
 local popup = require('pile.windows.popup')
 local log = require('pile.log')
-local history = require('pile.features.history')
-local sort = require('pile.features.sort')
 local config = require('pile.config')
 
 local M = {}
@@ -113,8 +111,8 @@ local function collect_buffer_info()
         buf = buf,
         name = name,
         filename = vim.fn.fnamemodify(name, ":t"),
-        buftype = vim.api.nvim_buf_get_option(buf, 'buftype'),
-        filetype = vim.api.nvim_buf_get_option(buf, 'filetype'),
+        buftype = vim.bo[buf].buftype,
+        filetype = vim.bo[buf].filetype,
         displayed = #window_ids > 0,
         window_ids = window_ids,
       })
@@ -157,9 +155,9 @@ function M.get_list()
     log.debug(string.format("[%d] buf: %d, filename: %s", i, buffer.buf, buffer.filename))
   end
 
-  if config.sort and config.sort.method then
-    sort.set_mode(config.sort.method)
-    buffer_list = sort.sort_buffers(buffer_list)
+  if config.session and config.session.preserve_order then
+    local reorder = require('pile.features.reorder')
+    buffer_list = reorder.sort_buffers_by_session_order(buffer_list)
   end
 
   return buffer_list
@@ -172,9 +170,6 @@ end
 local function open_selected_callback(choice)
   if choice then
     window.set_buffer(choice, selected_buffer.buf)
-    if config.history and config.history.enabled then
-      history.record(selected_buffer.buf)
-    end
   end
   popup.unmount()
 end
@@ -191,41 +186,31 @@ function M.open_selected(props)
   local window_count = #props.available_windows
   if window_count == 1 then
     window.set_buffer(props.available_windows[1], selected_buffer.buf)
-    if config.history and config.history.enabled then
-      history.record(selected_buffer.buf)
-    end
   elseif window_count > 1 then
     popup.select_window(props.available_windows, open_selected_callback)
   else
     window.set_buffer(nil, selected_buffer.buf)
-    if config.history and config.history.enabled then
-      history.record(selected_buffer.buf)
+  end
+end
+
+local function switch_buffer(offset)
+  local buffer_list = M.get_list()
+  local current_buf = M.get_current()
+  for i, buffer in ipairs(buffer_list) do
+    if buffer.buf == current_buf then
+      local target_index = ((i - 1 + offset) % #buffer_list) + 1
+      vim.api.nvim_set_current_buf(buffer_list[target_index].buf)
+      return
     end
   end
 end
 
 function M.next()
-  local buffers = M.get_list()
-  local current_buf = M.get_current()
-  for i, buffer in ipairs(buffers) do
-    if buffer.buf == current_buf then
-      local next_buf = buffers[i + 1] and buffers[i + 1].buf or buffers[1].buf
-      vim.api.nvim_set_current_buf(next_buf)
-      return
-    end
-  end
+  switch_buffer(1)
 end
 
 function M.prev()
-  local buffers = M.get_list()
-  local current_buf = M.get_current()
-  for i, buffer in ipairs(buffers) do
-    if buffer.buf == current_buf then
-      local prev_buf = buffers[i - 1] and buffers[i - 1].buf or buffers[#buffers].buf
-      vim.api.nvim_set_current_buf(prev_buf)
-      return
-    end
-  end
+  switch_buffer(-1)
 end
 
 return M

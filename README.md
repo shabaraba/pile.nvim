@@ -14,10 +14,11 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 
 ## Features
 
+- ✅ **Session Management**: Auto-restore previous buffers on startup
+- ✅ **Named Sessions**: Save and switch between different buffer sets
+- ✅ **Custom Buffer Order**: Freely reorder buffers and persist the order
 - ✅ Vertical sidebar listing all open buffers
 - ✅ Easily switch between buffers with keyboard shortcuts
-- ✅ Buffer access history tracking (persistent across sessions)
-- ✅ Multiple sort modes: MRU (Most Recently Used), frequency, score-based
 - ✅ Smart duplicate filename resolution
 - ✅ Visual window indicators
 - 🚧 Editable buffer names within the sidebar for quick renaming (not implemented yet)
@@ -69,15 +70,11 @@ To configure pile.nvim, add the following setup function to your Neovim config:
 
 ```lua
 require('pile').setup({
-  -- History management
-  history = {
-    enabled = true,           -- Enable history tracking
-    auto_cleanup_days = 30,   -- Auto-remove entries older than N days
-  },
-
-  -- Sort settings
-  sort = {
-    method = "buffer_number", -- "buffer_number", "mru", "frequency", "score"
+  -- Session management
+  session = {
+    auto_save = true,         -- Auto-save session on exit
+    auto_restore = true,      -- Auto-restore session on startup
+    preserve_order = true,    -- Preserve buffer order
   },
 
   -- Window indicator
@@ -111,12 +108,22 @@ require('pile').setup({
 :PileGoToPrevBuffer      " Switch to previous buffer
 ```
 
-### History Management Commands
+### Session Management Commands
 
 ```vim
-:PileSetSortMode <mode>  " Set sort mode: buffer_number, mru, frequency, score
-:PileHistoryStats        " Show history statistics
-:PileHistoryClear        " Clear all history data
+:PileSaveSession [name]          " Save current buffers to session
+:PileRestoreSession [name]       " Restore session
+:PileCreateSession <name>        " Create new named session
+:PileSwitchSession <name>        " Switch to another session
+:PileDeleteSession <name>        " Delete a session
+:PileListSessions                " List all sessions
+```
+
+### Buffer Reordering Commands
+
+```vim
+:PileMoveBufferUp                " Move current buffer up in sidebar
+:PileMoveBufferDown              " Move current buffer down in sidebar
 ```
 
 ### Keybindings
@@ -124,24 +131,54 @@ require('pile').setup({
 Set up convenient keybindings in your `init.lua`:
 
 ```lua
+-- Basic operations
 vim.api.nvim_set_keymap('n', '<leader>ps', ':PileToggle<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>pn', ':PileGoToNextBuffer<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>pp', ':PileGoToPrevBuffer<CR>', { noremap = true, silent = true })
+
+-- Session management
+vim.api.nvim_set_keymap('n', '<leader>pss', ':PileSaveSession<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>psr', ':PileRestoreSession<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>psl', ':PileListSessions<CR>', { noremap = true, silent = true })
+
+-- Buffer reordering
+vim.api.nvim_set_keymap('n', '<leader>pmu', ':PileMoveBufferUp<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>pmd', ':PileMoveBufferDown<CR>', { noremap = true, silent = true })
 ```
 
 ### Sidebar Keybindings
 
 While in the sidebar:
 - `<CR>`: Open the selected buffer
-- `dd`: Delete the buffer under cursor
-- `d` (visual mode): Delete multiple buffers
+- `q` / `<Esc>`: Close sidebar
 
-### Sort Modes
+**Buffer Operations (Vim-like):**
+- `dd`: Cut buffer (delete + save to register)
+- `yy`: Yank buffer (copy to register without deleting)
+- `p`: Paste buffers below cursor
+- `P`: Paste buffers above cursor
+- `D`: Delete buffer immediately (without saving to register)
+- `d` (visual mode): Cut multiple selected buffers
+- `y` (visual mode): Yank multiple selected buffers
 
-- **buffer_number**: Default Neovim buffer order
-- **mru**: Most Recently Used - recently accessed buffers first
-- **frequency**: Most frequently accessed buffers first
-- **score**: Combined score based on recency (70%) and frequency (30%)
+**Buffer Reordering:**
+- **Normal mode:**
+  - `<C-j>`: Move current buffer down
+  - `<C-k>`: Move current buffer up
+- **Visual mode:**
+  - `V` or `Shift+V`: Select line (start visual line mode)
+  - `j`/`k`: Extend selection
+  - `<C-j>`: Move selected buffers down
+  - `<C-k>`: Move selected buffers up
+
+**Note:** The register is automatically cleared when you leave the sidebar window.
+
+### How Sessions Work
+
+- **Auto-save**: When you exit Neovim, current buffers are saved to the "default" session
+- **Auto-restore**: On startup, buffers from the last session are automatically restored
+- **Named sessions**: Create multiple sessions for different projects or workflows
+- **Buffer order**: Your custom buffer order is preserved across sessions
 
 ## Contributing
 
