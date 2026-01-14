@@ -17,6 +17,10 @@ function M.assign_color(window_id, colors)
     return nil
   end
 
+  if not colors or #colors == 0 then
+    return nil
+  end
+
   if window_color_map[window_id] then
     return window_color_map[window_id]
   end

@@ -36,7 +36,6 @@ end
 
 local function is_sidebar_window(window_id, win_buf)
   return window_id == globals.sidebar_win
-    or window_id == globals.sidebar_buf
     or win_buf == globals.sidebar_buf
 end
 
@@ -106,7 +105,10 @@ local function set_keymaps()
     local start_line = vim.fn.getpos('v')[2]
     local end_line = vim.fn.getpos('.')[2]
 
-    for line = start_line, end_line do
+    local from_line = math.min(start_line, end_line)
+    local to_line = math.max(start_line, end_line)
+
+    for line = from_line, to_line do
       local selected_buffer = buffer_list[line]
       if selected_buffer then
         vim.api.nvim_buf_delete(selected_buffer.buf, { force = true })
