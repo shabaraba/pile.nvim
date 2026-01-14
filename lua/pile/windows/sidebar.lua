@@ -67,16 +67,30 @@ local function apply_window_indicators()
 
   -- 各バッファに対してインジケーターを設定
   for i, buffer in ipairs(buffer_list) do
-    if buffer.window_id and buffer.window_id ~= globals.sidebar_win then
-      -- ウィンドウに色を割り当て
-      local color = window_colors.assign_color(buffer.window_id, config.window_indicator.colors)
-      if color then
-        -- ハイライトグループ名を生成
-        local hl_group = string.format("PileWindowIndicator_%d", buffer.window_id)
+    if buffer.window_ids and #buffer.window_ids > 0 then
+      -- 複数のウィンドウインジケーターを作成
+      local virt_text = {}
 
-        -- extmarkを使ってバーチャルテキストを追加（左側に色付きのインジケーター）
+      for _, window_id in ipairs(buffer.window_ids) do
+        if window_id ~= globals.sidebar_win then
+          -- ウィンドウに色を割り当て
+          local color = window_colors.assign_color(window_id, config.window_indicator.colors)
+          if color then
+            -- ハイライトグループ名を生成
+            local hl_group = string.format("PileWindowIndicator_%d", window_id)
+            -- バーチャルテキストに色付きインジケーターを追加
+            table.insert(virt_text, {"█", hl_group})
+          end
+        end
+      end
+
+      -- インジケーターが1つ以上ある場合のみextmarkを設定
+      if #virt_text > 0 then
+        -- 最後のブロックとファイル名の間にスペースを追加
+        table.insert(virt_text, {" ", "Normal"})
+
         vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, i - 1, 0, {
-          virt_text = {{"█ ", hl_group}},
+          virt_text = virt_text,
           virt_text_pos = "inline",
           priority = 100,
         })

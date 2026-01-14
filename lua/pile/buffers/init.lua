@@ -6,17 +6,18 @@ local M = {}
 
 local selected_buffer = nil
 
--- バッファが実際に表示されているかどうかを確認し、表示しているウィンドウIDを返す関数
-local function get_buffer_window(buf)
+-- バッファが実際に表示されているすべてのウィンドウIDを返す関数
+local function get_buffer_windows(buf)
+  local windows = {}
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_is_valid(win) then
       local win_buf = vim.api.nvim_win_get_buf(win)
       if win_buf == buf then
-        return win
+        table.insert(windows, win)
       end
     end
   end
-  return nil
+  return windows
 end
 
 -- oil.nvimの一時ディレクトリバッファかどうかを判定する関数
@@ -58,15 +59,15 @@ function M.get_list()
       local filename = vim.fn.fnamemodify(name, ":t")
       
       -- この段階では、すべての有効なバッファ情報を保存
-      local window_id = get_buffer_window(buf)
+      local window_ids = get_buffer_windows(buf)
       table.insert(all_buffer_info, {
         buf = buf,
         name = name,
         filename = filename,
         buftype = buftype,
         filetype = filetype,
-        displayed = window_id ~= nil,
-        window_id = window_id
+        displayed = #window_ids > 0,
+        window_ids = window_ids
       })
     end
   end
@@ -96,7 +97,7 @@ function M.get_list()
         buf = info.buf,
         name = info.name,
         filename = info.filename,
-        window_id = info.window_id
+        window_ids = info.window_ids
       })
       
       -- デバッグ情報: 初期バッファ追加時
