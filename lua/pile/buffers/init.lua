@@ -12,7 +12,8 @@ local function get_buffer_windows(buf)
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_is_valid(win) then
       local win_buf = vim.api.nvim_win_get_buf(win)
-      if win_buf == buf then
+      -- サイドバーウィンドウとサイドバーバッファを除外
+      if win_buf == buf and win ~= globals.sidebar_win and win_buf ~= globals.sidebar_buf then
         table.insert(windows, win)
       end
     end

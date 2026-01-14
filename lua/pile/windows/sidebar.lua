@@ -65,6 +65,12 @@ local function apply_window_indicators()
   -- 無効なウィンドウの色割り当てをクリーンアップ
   window_colors.cleanup()
 
+  -- cleanup後に色マッピングが空になった場合（全ウィンドウが無効だった場合）、リセット
+  local all_mappings = require('pile.window_colors').get_all_mappings()
+  if vim.tbl_isempty(all_mappings) then
+    window_colors.reset()
+  end
+
   -- 各バッファに対してインジケーターを設定
   for i, buffer in ipairs(buffer_list) do
     if buffer.window_ids and #buffer.window_ids > 0 then
@@ -72,14 +78,22 @@ local function apply_window_indicators()
       local virt_text = {}
 
       for _, window_id in ipairs(buffer.window_ids) do
-        if window_id ~= globals.sidebar_win then
-          -- ウィンドウに色を割り当て
-          local color = window_colors.assign_color(window_id, config.window_indicator.colors)
-          if color then
-            -- ハイライトグループ名を生成
-            local hl_group = string.format("PileWindowIndicator_%d", window_id)
-            -- バーチャルテキストに色付きインジケーターを追加
-            table.insert(virt_text, {"█", hl_group})
+        -- サイドバーウィンドウを除外
+        if window_id ~= globals.sidebar_win and window_id ~= globals.sidebar_buf then
+          -- さらに、ウィンドウのバッファがサイドバーバッファでないことを確認
+          local win_buf = vim.api.nvim_win_get_buf(window_id)
+          if win_buf ~= globals.sidebar_buf then
+            -- ウィンドウに色を割り当て
+            local color = window_colors.assign_color(window_id, config.window_indicator.colors)
+            if color then
+              -- ウィンドウの枠に色を適用
+              window_colors.apply_to_window(window_id)
+
+              -- ハイライトグループ名を生成
+              local hl_group = string.format("PileWindowIndicator_%d", window_id)
+              -- バーチャルテキストに色付きインジケーターを追加
+              table.insert(virt_text, {"█", hl_group})
+            end
           end
         end
       end
@@ -137,6 +151,9 @@ function M.open()
     return
   end
 
+  -- サイドバー作成中はautocmdによる更新を防ぐフラグ
+  M._is_opening = true
+
   create_sidebar()
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', true)
   set_buffer_lines()
@@ -145,6 +162,9 @@ function M.open()
   vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
 
   set_keymaps()
+
+  -- フラグを解除
+  M._is_opening = false
 end
 
 function M.is_opened()
@@ -171,6 +191,11 @@ end
 
 -- サイドバーを更新する関数
 function M.update()
+  -- サイドバーを開いている最中は更新しない
+  if M._is_opening then
+    return
+  end
+
   if not globals.sidebar_buf or not vim.api.nvim_buf_is_valid(globals.sidebar_buf) then
     return
   end

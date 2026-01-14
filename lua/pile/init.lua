@@ -27,7 +27,7 @@ function M.setup(opts)
   if not check_dependencies() then
     return
   end
-  
+
   Config.setup(opts)
 
   -- ハイライトグループを定義（新しいAPIを使用）
@@ -38,6 +38,27 @@ function M.setup(opts)
   vim.api.nvim_set_hl(0, "SelectedWindow", {
     bg = "Red",
     fg = "White",
+  })
+
+  -- ウィンドウの色を自動更新するためのautocmd
+  local window_colors = require('pile.window_colors')
+
+  -- ウィンドウ作成・分割時
+  vim.api.nvim_create_autocmd({"WinNew", "WinEnter"}, {
+    pattern = "*",
+    callback = function()
+      -- サイドバーを更新（色の割り当ても含む）
+      sidebar.update()
+    end
+  })
+
+  -- バッファ切り替え時
+  vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
+    pattern = "*",
+    callback = function()
+      -- サイドバーを更新
+      sidebar.update()
+    end
   })
 
   vim.api.nvim_create_user_command("PileToggle", M.toggle_sidebar, { desc = "toggle pile window" })
