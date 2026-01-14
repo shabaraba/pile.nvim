@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/shabaraba/pile.nvim/compare/v1.0.0...v1.1.0) (2026-01-14)
+
+
+### Features
+
+* add color indicators for buffers displayed in windows ([#45](https://github.com/shabaraba/pile.nvim/issues/45)) ([edeb30d](https://github.com/shabaraba/pile.nvim/commit/edeb30d663c510f86239449eb9c4082c4fa0079c))
+* improve duplicate file path display with minimal information ([#26](https://github.com/shabaraba/pile.nvim/issues/26)) ([6401db1](https://github.com/shabaraba/pile.nvim/commit/6401db15ec4375d5ecb4a66f89c0321d1601d55c))
+
+
+### Bug Fixes
+
+* add nui.nvim dependency check and update documentation ([#31](https://github.com/shabaraba/pile.nvim/issues/31)) ([dfbb9b1](https://github.com/shabaraba/pile.nvim/commit/dfbb9b173a0fcf5f4bb89a050b285f66b51fafe8))
+* apply highlight configuration values correctly ([#33](https://github.com/shabaraba/pile.nvim/issues/33)) ([fe6d06b](https://github.com/shabaraba/pile.nvim/commit/fe6d06b173768e23ce671184be4bb6ff821e40d6))
+* improve oil.nvim integration with better buffer filtering ([#29](https://github.com/shabaraba/pile.nvim/issues/29)) ([912c3ef](https://github.com/shabaraba/pile.nvim/commit/912c3ef029f9561d39ece293695437a2656d5c96))
+* same file display ([#30](https://github.com/shabaraba/pile.nvim/issues/30)) ([7b50dfe](https://github.com/shabaraba/pile.nvim/commit/7b50dfe0ccf648e0645d7a844c8f32b97ef70040))
+
 ## 1.0.0 (2024-10-28)
 
 
