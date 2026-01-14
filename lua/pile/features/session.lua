@@ -3,19 +3,43 @@ local log = require('pile.log')
 
 local M = {}
 
+local function is_saveable_buffer(buf)
+  return vim.api.nvim_buf_is_valid(buf)
+    and vim.api.nvim_buf_is_loaded(buf)
+    and vim.api.nvim_buf_get_name(buf) ~= ''
+    and vim.bo[buf].buftype == ''
+end
+
+local function collect_saveable_buffers()
+  local buffers = {}
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if is_saveable_buffer(buf) then
+      local name = vim.api.nvim_buf_get_name(buf)
+      table.insert(buffers, { path = name, name = name })
+    end
+  end
+  return buffers
+end
+
+local function restore_buffer(path)
+  if not path or vim.fn.filereadable(path) ~= 1 then
+    log.debug("File not readable: " .. (path or "nil"))
+    return false
+  end
+
+  local buf = vim.fn.bufadd(path)
+  if buf > 0 then
+    vim.fn.bufload(buf)
+    log.trace("Restored buffer: " .. path)
+    return true
+  end
+  return false
+end
+
 function M.save_current_buffers(session_name)
   session_name = session_name or session_store.get_current_session_name()
 
-  local buffers = {}
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
-      local name = vim.api.nvim_buf_get_name(buf)
-      if name ~= '' and vim.bo[buf].buftype == '' then
-        table.insert(buffers, { path = name, name = name })
-      end
-    end
-  end
-
+  local buffers = collect_saveable_buffers()
   if #buffers == 0 then
     log.debug("No buffers to save")
     return false
@@ -30,7 +54,7 @@ end
 
 function M.restore_session(session_name)
   session_name = session_name or session_store.get_current_session_name()
-  
+
   local session = session_store.get_session(session_name)
   if not session or not session.buffers then
     log.debug("No session found: " .. session_name)
@@ -44,21 +68,13 @@ function M.restore_session(session_name)
 
   local restored_count = 0
   for _, buf_data in ipairs(buffers) do
-    local path = buf_data.path
-    if path and vim.fn.filereadable(path) == 1 then
-      local buf = vim.fn.bufadd(path)
-      if buf and buf > 0 then
-        vim.fn.bufload(buf)
-        restored_count = restored_count + 1
-        log.trace("Restored buffer: " .. path)
-      end
-    else
-      log.debug("File not readable: " .. (path or "nil"))
+    if restore_buffer(buf_data.path) then
+      restored_count = restored_count + 1
     end
   end
 
   if restored_count > 0 then
-    log.debug(string.format("Restored %d/%d buffers from session '%s'", 
+    log.debug(string.format("Restored %d/%d buffers from session '%s'",
       restored_count, #buffers, session_name))
   end
 
@@ -93,9 +109,7 @@ function M.switch_session(name)
   end
 
   M.save_current_buffers()
-  
   session_store.set_current_session(name)
-  
   return M.restore_session(name)
 end
 

@@ -3,25 +3,39 @@ local log = require('pile.log')
 
 local M = {}
 
-local function get_data_path()
-  local data_dir = vim.fn.stdpath('data') .. '/pile'
-  return data_dir .. '/sessions.json'
-end
+local DEFAULT_SESSION = 'default'
 
 local store = nil
 
+local function get_data_path()
+  return vim.fn.stdpath('data') .. '/pile/sessions.json'
+end
+
 local function get_store()
-  if not store then
-    store = json_store.new({
-      filepath = get_data_path(),
-      default_data = {
-        version = 1,
-        current_session = 'default',
-        sessions = {}
-      }
+  if store then
+    return store
+  end
+
+  store = json_store.new({
+    filepath = get_data_path(),
+    default_data = {
+      version = 1,
+      current_session = DEFAULT_SESSION,
+      sessions = {}
+    }
+  })
+  return store
+end
+
+local function build_buffer_data(buffers)
+  local buffer_data = {}
+  for i, buf in ipairs(buffers) do
+    table.insert(buffer_data, {
+      path = buf.path or buf.name,
+      order = i - 1
     })
   end
-  return store
+  return buffer_data
 end
 
 function M.get_all_sessions()
@@ -30,18 +44,16 @@ function M.get_all_sessions()
 end
 
 function M.get_session(name)
-  local sessions = M.get_all_sessions()
-  return sessions[name]
+  return M.get_all_sessions()[name]
 end
 
 function M.get_current_session_name()
   local data = get_store().read()
-  return data.current_session or 'default'
+  return data.current_session or DEFAULT_SESSION
 end
 
 function M.get_current_session()
-  local name = M.get_current_session_name()
-  return M.get_session(name)
+  return M.get_session(M.get_current_session_name())
 end
 
 function M.save_session(name, buffers)
@@ -50,25 +62,15 @@ function M.save_session(name, buffers)
     return false
   end
 
-  local buffer_data = {}
-  for i, buf in ipairs(buffers) do
-    table.insert(buffer_data, {
-      path = buf.path or buf.name,
-      order = i - 1
-    })
-  end
+  local buffer_data = build_buffer_data(buffers)
 
   return get_store().update(function(data)
-    if not data.sessions then
-      data.sessions = {}
-    end
-
+    data.sessions = data.sessions or {}
     data.sessions[name] = {
       name = name,
       buffers = buffer_data,
       last_updated = os.time()
     }
-
     return data
   end)
 end
@@ -81,36 +83,32 @@ function M.set_current_session(name)
 end
 
 function M.delete_session(name)
-  if name == 'default' then
+  if name == DEFAULT_SESSION then
     log.warn("Cannot delete default session")
     return false
   end
 
   return get_store().update(function(data)
-    if data.sessions and data.sessions[name] then
-      data.sessions[name] = nil
-      
-      if data.current_session == name then
-        data.current_session = 'default'
-      end
+    if not data.sessions or not data.sessions[name] then
+      return data
+    end
+
+    data.sessions[name] = nil
+    if data.current_session == name then
+      data.current_session = DEFAULT_SESSION
     end
     return data
   end)
 end
 
 function M.list_session_names()
-  local sessions = M.get_all_sessions()
-  local names = {}
-  for name, _ in pairs(sessions) do
-    table.insert(names, name)
-  end
+  local names = vim.tbl_keys(M.get_all_sessions())
   table.sort(names)
   return names
 end
 
 function M.session_exists(name)
-  local sessions = M.get_all_sessions()
-  return sessions[name] ~= nil
+  return M.get_all_sessions()[name] ~= nil
 end
 
 return M
