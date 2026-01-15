@@ -8,10 +8,20 @@ local DEFAULT_SESSION = 'default'
 
 local store_cache = {}
 
+local function string_hash(str)
+  local hash = 0
+  for i = 1, #str do
+    hash = (hash * 31 + string.byte(str, i)) % 0x7FFFFFFF
+  end
+  return string.format("%08x", hash)
+end
+
 local function get_project_id()
   local git_root = git_utils.get_git_root()
   if git_root then
-    return vim.fn.fnamemodify(git_root, ':t')
+    local basename = vim.fn.fnamemodify(git_root, ':t')
+    local hash = string_hash(git_root)
+    return basename .. '-' .. hash
   end
   return 'global'
 end
