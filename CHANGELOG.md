@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/shabaraba/pile.nvim/compare/v1.1.0...v1.2.0) (2026-01-15)
+
+
+### Features
+
+* session management and vim-like buffer operations ([#46](https://github.com/shabaraba/pile.nvim/issues/46)) ([1ae6d53](https://github.com/shabaraba/pile.nvim/commit/1ae6d538fb8d5801ee8709e80917c929325062af))
+
+
+### Bug Fixes
+
+* Separate sessions per project ([#48](https://github.com/shabaraba/pile.nvim/issues/48)) ([97463cb](https://github.com/shabaraba/pile.nvim/commit/97463cb67aabfb4703887511ac879aa8dd822cdb))
+
 ## [1.2.0] (2026-01-14)
 
 ### Features
