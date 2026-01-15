@@ -14,11 +14,16 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 
 ## Features
 
-- Vertical sidebar listing all open buffers.
-- Easily switch between buffers with keyboard shortcuts.
-- Editable buffer names within the sidebar for quick renaming.(not implemented yet)
-- Automatically updates file names when a buffer is renamed.(not implemented yet)
-- LSP integration: Automatically updates import paths when a file is renamed.(not implemented yet)
+- ✅ **Session Management**: Auto-restore previous buffers on startup
+- ✅ **Named Sessions**: Save and switch between different buffer sets
+- ✅ **Custom Buffer Order**: Freely reorder buffers and persist the order
+- ✅ Vertical sidebar listing all open buffers
+- ✅ Easily switch between buffers with keyboard shortcuts
+- ✅ Smart duplicate filename resolution
+- ✅ Visual window indicators
+- 🚧 Editable buffer names within the sidebar for quick renaming (not implemented yet)
+- 🚧 Automatically updates file names when a buffer is renamed (not implemented yet)
+- 🚧 LSP integration: Automatically updates import paths when a file is renamed (not implemented yet)
 
 ## Requirements
 
@@ -61,23 +66,33 @@ Plug 'shabaraba/pile.nvim'
 
 ## Setup and Configuration
 
-<!--
-
-To configure pile.nvim, add the following setup function to your Neovim config.
+To configure pile.nvim, add the following setup function to your Neovim config:
 
 ```lua
 require('pile').setup({
-  -- Configuration options
-  width = 30,              -- Width of the sidebar
-  highlight_current = true, -- Highlight the current buffer in the sidebar
-  keymaps = {
-    open_buffer = '<CR>',   -- Keymap to open the buffer
-    close_sidebar = 'q',    -- Keymap to close the sidebar
+  -- Session management
+  session = {
+    auto_save = true,         -- Auto-save session on exit
+    auto_restore = true,      -- Auto-restore session on startup
+    preserve_order = true,    -- Preserve buffer order
+  },
+
+  -- Window indicator
+  window_indicator = {
+    enabled = true,           -- Show window indicators
+    colors = {                -- Color palette for indicators
+      "#E06C75", "#98C379", "#E5C07B", "#61AFEF",
+      "#C678DD", "#56B6C2", "#D19A66", "#ABB2BF",
+    },
+  },
+
+  -- Debug settings
+  debug = {
+    enabled = false,
+    level = "info",           -- "error", "warn", "info", "debug", "trace"
   },
 })
 ```
-
--->
 
 ## Key Features:
 
@@ -85,18 +100,85 @@ require('pile').setup({
 
 ## Usage
 
-Open the sidebar:
-:PileToggle
-or set a keybind in your init.lua:
+### Basic Commands
 
+```vim
+:PileToggle              " Toggle the sidebar
+:PileGoToNextBuffer      " Switch to next buffer
+:PileGoToPrevBuffer      " Switch to previous buffer
+```
+
+### Session Management Commands
+
+```vim
+:PileSaveSession [name]          " Save current buffers to session
+:PileRestoreSession [name]       " Restore session
+:PileCreateSession <name>        " Create new named session
+:PileSwitchSession <name>        " Switch to another session
+:PileDeleteSession <name>        " Delete a session
+:PileListSessions                " List all sessions
+```
+
+### Buffer Reordering Commands
+
+```vim
+:PileMoveBufferUp                " Move current buffer up in sidebar
+:PileMoveBufferDown              " Move current buffer down in sidebar
+```
+
+### Keybindings
+
+Set up convenient keybindings in your `init.lua`:
+
+```lua
+-- Basic operations
 vim.api.nvim_set_keymap('n', '<leader>ps', ':PileToggle<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>pn', ':PileGoToNextBuffer<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>pp', ':PileGoToPrevBuffer<CR>', { noremap = true, silent = true })
 
-Navigate between buffers:
-:PileGoToNextBuffer
-:PileGoToPrevBuffer
+-- Session management
+vim.api.nvim_set_keymap('n', '<leader>pss', ':PileSaveSession<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>psr', ':PileRestoreSession<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>psl', ':PileListSessions<CR>', { noremap = true, silent = true })
 
-Rename a buffer:
-Edit the buffer name directly in the sidebar and save the changes to rename the file.
+-- Buffer reordering
+vim.api.nvim_set_keymap('n', '<leader>pmu', ':PileMoveBufferUp<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>pmd', ':PileMoveBufferDown<CR>', { noremap = true, silent = true })
+```
+
+### Sidebar Keybindings
+
+While in the sidebar:
+- `<CR>`: Open the selected buffer
+- `q` / `<Esc>`: Close sidebar
+
+**Buffer Operations (Vim-like):**
+- `dd`: Cut buffer (delete + save to register)
+- `yy`: Yank buffer (copy to register without deleting)
+- `p`: Paste buffers below cursor
+- `P`: Paste buffers above cursor
+- `D`: Delete buffer immediately (without saving to register)
+- `d` (visual mode): Cut multiple selected buffers
+- `y` (visual mode): Yank multiple selected buffers
+
+**Buffer Reordering:**
+- **Normal mode:**
+  - `<C-j>`: Move current buffer down
+  - `<C-k>`: Move current buffer up
+- **Visual mode:**
+  - `V` or `Shift+V`: Select line (start visual line mode)
+  - `j`/`k`: Extend selection
+  - `<C-j>`: Move selected buffers down
+  - `<C-k>`: Move selected buffers up
+
+**Note:** The register is automatically cleared when you leave the sidebar window.
+
+### How Sessions Work
+
+- **Auto-save**: When you exit Neovim, current buffers are saved to the "default" session
+- **Auto-restore**: On startup, buffers from the last session are automatically restored
+- **Named sessions**: Create multiple sessions for different projects or workflows
+- **Buffer order**: Your custom buffer order is preserved across sessions
 
 ## Contributing
 

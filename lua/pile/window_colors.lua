@@ -81,11 +81,7 @@ function M.apply_to_window(window_id)
   local hl_group = string.format("PileCursorLineNr_%d", window_id)
   create_highlight_group(hl_group, color, { bold = true })
 
-  vim.api.nvim_win_set_option(
-    window_id,
-    'winhighlight',
-    string.format('CursorLineNr:%s', hl_group)
-  )
+  vim.wo[window_id].winhighlight = string.format('CursorLineNr:%s', hl_group)
 end
 
 function M.apply_all_windows()

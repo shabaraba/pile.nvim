@@ -2,6 +2,7 @@ local globals = require('pile.globals')
 local window = require('pile.windows')
 local popup = require('pile.windows.popup')
 local log = require('pile.log')
+local config = require('pile.config')
 
 local M = {}
 
@@ -110,8 +111,8 @@ local function collect_buffer_info()
         buf = buf,
         name = name,
         filename = vim.fn.fnamemodify(name, ":t"),
-        buftype = vim.api.nvim_buf_get_option(buf, 'buftype'),
-        filetype = vim.api.nvim_buf_get_option(buf, 'filetype'),
+        buftype = vim.bo[buf].buftype,
+        filetype = vim.bo[buf].filetype,
         displayed = #window_ids > 0,
         window_ids = window_ids,
       })
@@ -154,6 +155,11 @@ function M.get_list()
     log.debug(string.format("[%d] buf: %d, filename: %s", i, buffer.buf, buffer.filename))
   end
 
+  if config.session and config.session.preserve_order then
+    local reorder = require('pile.features.reorder')
+    buffer_list = reorder.sort_buffers_by_session_order(buffer_list)
+  end
+
   return buffer_list
 end
 
@@ -187,28 +193,24 @@ function M.open_selected(props)
   end
 end
 
-function M.next()
-  local buffers = M.get_list()
+local function switch_buffer(offset)
+  local buffer_list = M.get_list()
   local current_buf = M.get_current()
-  for i, buffer in ipairs(buffers) do
+  for i, buffer in ipairs(buffer_list) do
     if buffer.buf == current_buf then
-      local next_buf = buffers[i + 1] and buffers[i + 1].buf or buffers[1].buf
-      vim.api.nvim_set_current_buf(next_buf)
+      local target_index = ((i - 1 + offset) % #buffer_list) + 1
+      vim.api.nvim_set_current_buf(buffer_list[target_index].buf)
       return
     end
   end
 end
 
+function M.next()
+  switch_buffer(1)
+end
+
 function M.prev()
-  local buffers = M.get_list()
-  local current_buf = M.get_current()
-  for i, buffer in ipairs(buffers) do
-    if buffer.buf == current_buf then
-      local prev_buf = buffers[i - 1] and buffers[i - 1].buf or buffers[#buffers].buf
-      vim.api.nvim_set_current_buf(prev_buf)
-      return
-    end
-  end
+  switch_buffer(-1)
 end
 
 return M

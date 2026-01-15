@@ -6,6 +6,8 @@ local config = require 'pile.config'
 
 local buffer_list = {}
 local ns_id = vim.api.nvim_create_namespace('pile_window_indicators')
+local SIDEBAR_WIDTH = 35
+local augroup = vim.api.nvim_create_augroup("PileSidebar", { clear = true })
 
 local M = {}
 
@@ -15,7 +17,7 @@ local function create_sidebar()
   globals.sidebar_win = vim.api.nvim_get_current_win()
 
   vim.api.nvim_win_set_buf(globals.sidebar_win, globals.sidebar_buf)
-  vim.api.nvim_win_set_width(globals.sidebar_win, 35)
+  vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
 end
 
 local function buffer_list_to_lines()
@@ -35,8 +37,7 @@ local function highlight_current_buffer(target_buffer)
 end
 
 local function is_sidebar_window(window_id, win_buf)
-  return window_id == globals.sidebar_win
-    or win_buf == globals.sidebar_buf
+  return window_id == globals.sidebar_win or win_buf == globals.sidebar_buf
 end
 
 local function build_indicator_virt_text(window_ids)
@@ -85,38 +86,172 @@ local function apply_window_indicators()
   end
 end
 
+local function get_current_line()
+  return vim.api.nvim_win_get_cursor(globals.sidebar_win)[1]
+end
+
+local function get_buffer_at_cursor()
+  return buffer_list[get_current_line()]
+end
+
+local function get_visual_range()
+  local start_line = vim.fn.getpos('v')[2]
+  local end_line = vim.fn.getpos('.')[2]
+  return math.min(start_line, end_line), math.max(start_line, end_line)
+end
+
+local function get_buffers_in_range(from_line, to_line)
+  local selected = {}
+  for line = from_line, to_line do
+    if buffer_list[line] then
+      table.insert(selected, buffer_list[line])
+    end
+  end
+  return selected
+end
+
+local function exit_visual_mode()
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
+end
+
+local function restore_visual_selection(from_line, to_line)
+  vim.api.nvim_win_set_cursor(globals.sidebar_win, {to_line, 0})
+  vim.cmd('normal! V')
+  vim.api.nvim_win_set_cursor(globals.sidebar_win, {from_line, 0})
+  vim.cmd('normal! o')
+end
+
+local function set_keymap(mode, lhs, callback, desc)
+  vim.keymap.set(mode, lhs, callback, {
+    buffer = globals.sidebar_buf,
+    noremap = true,
+    silent = true,
+    desc = desc
+  })
+end
+
 local function set_keymaps()
-  vim.keymap.set('n', '<CR>', function()
+  local register = require('pile.features.register')
+  local reorder = require('pile.features.reorder')
+
+  set_keymap('n', '<CR>', function()
     local available_windows = require('pile.windows').get_available_windows()
     require 'pile.buffers'.open_selected({ available_windows = available_windows })
-  end, { buffer = globals.sidebar_buf, noremap = true, silent = true })
+  end, "Open buffer")
 
-  vim.keymap.set('n', 'dd', function()
-    local current_win = vim.api.nvim_get_current_win()
-    local current_line = vim.api.nvim_win_get_cursor(current_win)[1]
-    local buffer = buffer_list[current_line]
+  set_keymap('n', 'dd', function()
+    local buffer = get_buffer_at_cursor()
+    if buffer then
+      register.cut({buffer})
+      M.update()
+    end
+  end, "Cut buffer")
+
+  set_keymap('x', 'd', function()
+    local from_line, to_line = get_visual_range()
+    register.cut(get_buffers_in_range(from_line, to_line))
+    M.update()
+    exit_visual_mode()
+  end, "Cut selection")
+
+  set_keymap('n', 'yy', function()
+    local buffer = get_buffer_at_cursor()
+    if buffer then
+      register.yank({buffer})
+      print("Yanked 1 buffer")
+    end
+  end, "Yank buffer")
+
+  set_keymap('x', 'y', function()
+    local from_line, to_line = get_visual_range()
+    local selected = get_buffers_in_range(from_line, to_line)
+    register.yank(selected)
+    print(string.format("Yanked %d buffer(s)", #selected))
+    exit_visual_mode()
+  end, "Yank selection")
+
+  set_keymap('n', 'p', function()
+    if register.is_empty() then
+      print("Register is empty")
+      return
+    end
+
+    local count = register.get_count()
+    local new_list = register.paste(get_current_line(), buffer_list)
+    reorder.save_buffer_order(new_list)
+    M.update()
+    print(string.format("Pasted %d buffer(s)", count))
+  end, "Paste below")
+
+  set_keymap('n', 'P', function()
+    if register.is_empty() then
+      print("Register is empty")
+      return
+    end
+
+    local count = register.get_count()
+    local new_list = register.paste(get_current_line() - 1, buffer_list)
+    reorder.save_buffer_order(new_list)
+    M.update()
+    print(string.format("Pasted %d buffer(s)", count))
+  end, "Paste above")
+
+  set_keymap('n', 'D', function()
+    local buffer = get_buffer_at_cursor()
     if buffer then
       vim.api.nvim_buf_delete(buffer.buf, { force = true })
       M.update()
+      print("Buffer deleted")
     end
-  end, { buffer = globals.sidebar_buf, noremap = true, silent = true })
+  end, "Delete buffer immediately")
 
-  vim.keymap.set('x', 'd', function()
-    local start_line = vim.fn.getpos('v')[2]
-    local end_line = vim.fn.getpos('.')[2]
-
-    local from_line = math.min(start_line, end_line)
-    local to_line = math.max(start_line, end_line)
-
-    for line = from_line, to_line do
-      local selected_buffer = buffer_list[line]
-      if selected_buffer then
-        vim.api.nvim_buf_delete(selected_buffer.buf, { force = true })
-      end
+  set_keymap('n', '<C-j>', function()
+    local current_line = get_current_line()
+    if current_line >= #buffer_list then
+      return
     end
+
+    local reordered = reorder.move_buffer(current_line, current_line + 1, buffer_list)
+    reorder.save_buffer_order(reordered)
     M.update()
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
-  end, { buffer = globals.sidebar_buf, noremap = true, silent = true })
+    vim.api.nvim_win_set_cursor(globals.sidebar_win, {current_line + 1, 0})
+  end, "Move buffer down")
+
+  set_keymap('n', '<C-k>', function()
+    local current_line = get_current_line()
+    if current_line <= 1 then
+      return
+    end
+
+    local reordered = reorder.move_buffer(current_line, current_line - 1, buffer_list)
+    reorder.save_buffer_order(reordered)
+    M.update()
+    vim.api.nvim_win_set_cursor(globals.sidebar_win, {current_line - 1, 0})
+  end, "Move buffer up")
+
+  set_keymap('x', '<C-j>', function()
+    local from_line, to_line = get_visual_range()
+    if to_line >= #buffer_list then
+      return
+    end
+
+    local reordered = reorder.move_range(from_line, to_line, "down", buffer_list)
+    reorder.save_buffer_order(reordered)
+    M.update()
+    restore_visual_selection(from_line + 1, to_line + 1)
+  end, "Move selection down")
+
+  set_keymap('x', '<C-k>', function()
+    local from_line, to_line = get_visual_range()
+    if from_line <= 1 then
+      return
+    end
+
+    local reordered = reorder.move_range(from_line, to_line, "up", buffer_list)
+    reorder.save_buffer_order(reordered)
+    M.update()
+    restore_visual_selection(from_line - 1, to_line - 1)
+  end, "Move selection up")
 end
 
 function M.open()
@@ -128,15 +263,25 @@ function M.open()
   M._is_opening = true
 
   create_sidebar()
-  vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', true)
+  vim.bo[globals.sidebar_buf].modifiable = true
 
   buffer_list = buffers.get_list()
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, buffer_list_to_lines())
   highlight_current_buffer(buffers.get_current())
   apply_window_indicators()
 
-  vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
+  vim.bo[globals.sidebar_buf].modifiable = false
   set_keymaps()
+
+  vim.api.nvim_create_autocmd("WinLeave", {
+    group = augroup,
+    buffer = globals.sidebar_buf,
+    callback = function()
+      local register = require('pile.features.register')
+      register.clear()
+    end,
+    desc = "Clear pile register when leaving sidebar"
+  })
 
   M._is_opening = false
 end
@@ -174,38 +319,30 @@ function M.update()
 
   buffer_list = buffers.get_list()
 
-  vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', true)
+  vim.bo[globals.sidebar_buf].modifiable = true
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, buffer_list_to_lines())
-  vim.api.nvim_buf_set_option(globals.sidebar_buf, 'modifiable', false)
+  vim.bo[globals.sidebar_buf].modifiable = false
 
   highlight_current_buffer(vim.api.nvim_get_current_buf())
   apply_window_indicators()
 
   if globals.sidebar_win and vim.api.nvim_win_is_valid(globals.sidebar_win) then
-    vim.api.nvim_win_set_width(globals.sidebar_win, 35)
+    vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
   end
 end
 
-vim.api.nvim_create_autocmd({"BufAdd", "BufLeave"}, {
-  pattern = "*",
-  callback = function()
-    log.debug("Buffer event - updating sidebar")
-    M.update()
-  end
-})
-
-vim.api.nvim_create_autocmd("BufEnter", {
+vim.api.nvim_create_autocmd({"BufAdd", "BufLeave", "BufEnter"}, {
   pattern = "*",
   callback = function()
     if vim.api.nvim_get_current_buf() ~= globals.sidebar_buf then
-      log.debug("BufEnter event - updating sidebar")
+      log.debug("Buffer event - updating sidebar")
       M.update()
     end
   end
 })
 
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = {"*"},
+  pattern = "*",
   callback = function(ev)
     if ev.match ~= "oil" and ev.match ~= "oilBrowser" then
       vim.defer_fn(function()

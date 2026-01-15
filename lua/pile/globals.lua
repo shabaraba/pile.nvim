@@ -3,5 +3,4 @@ local M = {
   sidebar_win = nil,
 }
 
-
 return M
