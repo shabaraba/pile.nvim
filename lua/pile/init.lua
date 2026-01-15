@@ -127,7 +127,10 @@ function M.switch_to_prev_buffer()
 end
 
 local function get_session_name(opts)
-  return opts.args and opts.args ~= "" and opts.args or nil
+  if not opts or not opts.args then
+    return nil
+  end
+  return opts.args ~= "" and opts.args or nil
 end
 
 function M.save_session(opts)

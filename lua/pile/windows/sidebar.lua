@@ -7,6 +7,7 @@ local config = require 'pile.config'
 local buffer_list = {}
 local ns_id = vim.api.nvim_create_namespace('pile_window_indicators')
 local SIDEBAR_WIDTH = 35
+local augroup = vim.api.nvim_create_augroup("PileSidebar", { clear = true })
 
 local M = {}
 
@@ -273,6 +274,7 @@ function M.open()
   set_keymaps()
 
   vim.api.nvim_create_autocmd("WinLeave", {
+    group = augroup,
     buffer = globals.sidebar_buf,
     callback = function()
       local register = require('pile.features.register')

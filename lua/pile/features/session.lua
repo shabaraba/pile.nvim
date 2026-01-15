@@ -61,7 +61,12 @@ function M.restore_session(session_name)
     return false
   end
 
-  local buffers = session.buffers
+  -- Make a shallow copy to avoid mutating session.buffers
+  local buffers = {}
+  for _, buf_data in ipairs(session.buffers) do
+    table.insert(buffers, buf_data)
+  end
+
   table.sort(buffers, function(a, b)
     return a.order < b.order
   end)
@@ -136,9 +141,14 @@ function M.get_session_info(name)
     return nil
   end
 
+  local buffer_count = 0
+  if type(session.buffers) == "table" then
+    buffer_count = #session.buffers
+  end
+
   return {
     name = session.name,
-    buffer_count = #session.buffers,
+    buffer_count = buffer_count,
     last_updated = session.last_updated
   }
 end
