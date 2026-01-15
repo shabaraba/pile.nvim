@@ -1,30 +1,44 @@
 local json_store = require('pile.storage.json_store')
 local log = require('pile.log')
+local git_utils = require('pile.utils.git')
 
 local M = {}
 
 local DEFAULT_SESSION = 'default'
 
-local store = nil
+local store_cache = {}
+
+local function get_project_id()
+  local git_root = git_utils.get_git_root()
+  if git_root then
+    return vim.fn.fnamemodify(git_root, ':t')
+  end
+  return 'global'
+end
 
 local function get_data_path()
-  return vim.fn.stdpath('data') .. '/pile/sessions.json'
+  local project_id = get_project_id()
+  return vim.fn.stdpath('data') .. '/pile/sessions-' .. project_id .. '.json'
 end
 
 local function get_store()
-  if store then
-    return store
+  local data_path = get_data_path()
+
+  if store_cache[data_path] then
+    return store_cache[data_path]
   end
 
-  store = json_store.new({
-    filepath = get_data_path(),
+  local new_store = json_store.new({
+    filepath = data_path,
     default_data = {
       version = 1,
       current_session = DEFAULT_SESSION,
       sessions = {}
     }
   })
-  return store
+
+  store_cache[data_path] = new_store
+  return new_store
 end
 
 local function build_buffer_data(buffers)
