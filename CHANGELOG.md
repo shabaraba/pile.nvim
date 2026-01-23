@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/shabaraba/pile.nvim/compare/v1.2.0...v1.2.1) (2026-01-23)
+
+
+### Bug Fixes
+
+* make restored buffers navigable with bnext/bprev ([#49](https://github.com/shabaraba/pile.nvim/issues/49)) ([c903e8f](https://github.com/shabaraba/pile.nvim/commit/c903e8f0afa46a6af808067c354a0e5df453dad1))
+
 ## [1.2.0](https://github.com/shabaraba/pile.nvim/compare/v1.1.0...v1.2.0) (2026-01-15)
 
 
