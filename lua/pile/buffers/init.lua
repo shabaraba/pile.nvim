@@ -31,7 +31,6 @@ local function is_displayable_buffer(info)
     and info.filetype ~= 'notify'
     and info.buftype ~= 'nofile'
     and not is_oil_buffer(info.name, info.filetype)
-    and (info.displayed or info.name:match("%.%w+$"))
 end
 
 local function split_path_segments(path)
