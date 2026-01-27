@@ -80,7 +80,7 @@ function M.get_current_session()
   return M.get_session(M.get_current_session_name())
 end
 
-function M.save_session(name, buffers)
+function M.save_session(name, buffers, layout)
   if not name or name == '' then
     log.warn("Session name cannot be empty")
     return false
@@ -93,6 +93,7 @@ function M.save_session(name, buffers)
     data.sessions[name] = {
       name = name,
       buffers = buffer_data,
+      layout = layout or {},
       last_updated = os.time()
     }
     return data
