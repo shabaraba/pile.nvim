@@ -93,10 +93,16 @@ end
 --- Restore window layout
 --- NOTE: Currently restores windows as vertical splits only. Full winlayout() tree
 --- restoration with proper split directions and sizes is not yet implemented.
---- @param layout table Layout information from collect_window_layout
---- @param buffer_map table Mapping from file path to buffer handle
+--- @param layout table|nil Layout information from collect_window_layout
+--- @param buffer_map table|nil Mapping from file path to buffer handle
 local function restore_window_layout(layout, buffer_map)
-  if not layout or #layout == 0 then
+  if not layout or type(layout) ~= 'table' or #layout == 0 then
+    log.debug("No layout to restore or invalid layout type")
+    return
+  end
+
+  if not buffer_map or type(buffer_map) ~= 'table' then
+    log.debug("Invalid buffer_map provided to restore_window_layout")
     return
   end
 
@@ -104,13 +110,15 @@ local function restore_window_layout(layout, buffer_map)
 
   local is_first_window = true
   for _, win_data in ipairs(layout) do
-    local buf = buffer_map[win_data.bufpath]
-    if buf and vim.api.nvim_buf_is_valid(buf) then
-      if not is_first_window then
-        vim.cmd('vsplit')
+    if type(win_data) == 'table' and win_data.bufpath then
+      local buf = buffer_map[win_data.bufpath]
+      if buf and vim.api.nvim_buf_is_valid(buf) then
+        if not is_first_window then
+          vim.cmd('vsplit')
+        end
+        vim.api.nvim_set_current_buf(buf)
+        is_first_window = false
       end
-      vim.api.nvim_set_current_buf(buf)
-      is_first_window = false
     end
   end
 end
@@ -165,8 +173,11 @@ function M.restore_session(session_name)
     end
   end
 
-  if session.layout and #session.layout > 0 then
+  if session.layout and type(session.layout) == 'table' and #session.layout > 0 then
+    log.debug(string.format("Restoring layout with %d windows", #session.layout))
     restore_window_layout(session.layout, buffer_map)
+  else
+    log.debug("No layout to restore or layout is empty")
   end
 
   if restored_count > 0 then
