@@ -21,20 +21,22 @@ local function collect_saveable_buffers()
   return buffers
 end
 
+local function is_normal_window(win)
+  local config = vim.api.nvim_win_get_config(win)
+  return not config.relative or config.relative == ''
+end
+
 local function collect_window_layout()
   local layout = {}
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local buf = vim.api.nvim_win_get_buf(win)
-    if is_saveable_buffer(buf) then
-      local config = vim.api.nvim_win_get_config(win)
-      if not config.relative or config.relative == '' then
-        table.insert(layout, {
-          bufpath = vim.api.nvim_buf_get_name(buf),
-          width = vim.api.nvim_win_get_width(win),
-          height = vim.api.nvim_win_get_height(win),
-          position = vim.api.nvim_win_get_position(win),
-        })
-      end
+    if is_saveable_buffer(buf) and is_normal_window(win) then
+      table.insert(layout, {
+        bufpath = vim.api.nvim_buf_get_name(buf),
+        width = vim.api.nvim_win_get_width(win),
+        height = vim.api.nvim_win_get_height(win),
+        position = vim.api.nvim_win_get_position(win),
+      })
     end
   end
   return layout
@@ -74,17 +76,15 @@ local function restore_window_layout(layout, buffer_map)
 
   vim.cmd('only')
 
-  local first_window = true
+  local is_first_window = true
   for _, win_data in ipairs(layout) do
     local buf = buffer_map[win_data.bufpath]
     if buf then
-      if first_window then
-        vim.api.nvim_set_current_buf(buf)
-        first_window = false
-      else
+      if not is_first_window then
         vim.cmd('vsplit')
-        vim.api.nvim_set_current_buf(buf)
       end
+      vim.api.nvim_set_current_buf(buf)
+      is_first_window = false
     end
   end
 end
@@ -118,11 +118,7 @@ function M.restore_session(session_name)
 
   close_empty_nofile_buffers()
 
-  local buffers = {}
-  for _, buf_data in ipairs(session.buffers) do
-    table.insert(buffers, buf_data)
-  end
-
+  local buffers = vim.deepcopy(session.buffers)
   table.sort(buffers, function(a, b)
     return a.order < b.order
   end)
@@ -210,14 +206,10 @@ function M.get_session_info(name)
     return nil
   end
 
-  local buffer_count = 0
-  if type(session.buffers) == "table" then
-    buffer_count = #session.buffers
-  end
-
+  local buffers = session.buffers or {}
   return {
     name = session.name,
-    buffer_count = buffer_count,
+    buffer_count = #buffers,
     last_updated = session.last_updated
   }
 end
