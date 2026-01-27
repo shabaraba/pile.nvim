@@ -106,7 +106,11 @@ local function restore_window_layout(layout, buffer_map)
     return
   end
 
-  vim.cmd('only')
+  -- Close all windows except current to avoid "Already only one window" warning
+  local win_count = #vim.api.nvim_list_wins()
+  if win_count > 1 then
+    vim.cmd('only')
+  end
 
   local is_first_window = true
   for _, win_data in ipairs(layout) do
