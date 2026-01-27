@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/shabaraba/pile.nvim/compare/v1.2.1...v1.3.0) (2026-01-27)
+
+
+### Features
+
+* Add window layout preservation to session management ([#51](https://github.com/shabaraba/pile.nvim/issues/51)) ([91de4da](https://github.com/shabaraba/pile.nvim/commit/91de4dab091f1fd839f69101ea378aff857a419b))
+
 ## [1.2.1](https://github.com/shabaraba/pile.nvim/compare/v1.2.0...v1.2.1) (2026-01-23)
 
 
