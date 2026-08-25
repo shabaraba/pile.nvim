@@ -37,6 +37,9 @@ function M.new(config)
     cache_mtime = nil
   end
 
+  --- Read the stored contents
+  --- The returned table is shared with the cache: treat it as read-only and go
+  --- through update() to change anything.
   function self.read()
     local mtime = file_mtime()
     if cache and mtime and mtime == cache_mtime then
@@ -89,8 +92,14 @@ function M.new(config)
       return false
     end
 
-    file:write(json_string)
-    file:close()
+    local written, write_err = file:write(json_string)
+    local closed, close_err = file:close()
+    if not written or not closed then
+      log.error("Failed to write file: " .. self.filepath .. ": " ..
+        tostring(write_err or close_err))
+      self.invalidate()
+      return false
+    end
 
     cache = data
     cache_mtime = file_mtime()
@@ -99,9 +108,11 @@ function M.new(config)
     return true
   end
 
+  --- Read, transform and persist in one step
+  --- update_fn gets a private copy: mutating the cached table directly would leave
+  --- the cache holding changes that were never written if the write fails.
   function self.update(update_fn)
-    local data = self.read()
-    local updated_data = update_fn(data)
+    local updated_data = update_fn(vim.deepcopy(self.read()))
     return self.write(updated_data)
   end
 
