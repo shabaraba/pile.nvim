@@ -6,11 +6,13 @@ local log = require('pile.log')
 local M = {}
 
 --- Check if a buffer should be saved in the session
+--- Listed-but-unloaded buffers count: restore adds buffers lazily, so a buffer
+--- the user never opened this session must still survive the next save.
 --- @param buf number Buffer handle
 --- @return boolean True if buffer should be saved
 local function is_saveable_buffer(buf)
   return vim.api.nvim_buf_is_valid(buf)
-    and vim.api.nvim_buf_is_loaded(buf)
+    and (vim.api.nvim_buf_is_loaded(buf) or vim.bo[buf].buflisted)
     and vim.api.nvim_buf_get_name(buf) ~= ''
     and vim.bo[buf].buftype == ''
 end
@@ -58,6 +60,9 @@ local function collect_window_layout()
 end
 
 --- Restore a buffer from a file path
+--- The buffer is added but deliberately left unloaded: loading it here would fire
+--- BufRead/FileType for every session file, dragging syntax, treesitter and LSP
+--- attach into startup. Neovim loads it on first display instead.
 --- @param path string File path to restore
 --- @return boolean Success status
 --- @return number|nil Buffer handle if successful
@@ -69,7 +74,8 @@ local function restore_buffer(path)
 
   local buf = vim.fn.bufadd(path)
   if buf > 0 then
-    vim.fn.bufload(buf)
+    -- bufadd() leaves 'buflisted' off, which hides the buffer from :bnext/:bprev
+    vim.bo[buf].buflisted = true
     log.trace("Restored buffer: " .. path)
     return true, buf
   end
@@ -160,28 +166,41 @@ function M.restore_session(session_name)
     return false
   end
 
-  close_empty_nofile_buffers()
-
   local buffers = vim.deepcopy(session.buffers)
   table.sort(buffers, function(a, b)
     return a.order < b.order
   end)
 
-  local buffer_map = {}
-  local restored_count = 0
-  for _, buf_data in ipairs(buffers) do
-    local ok, buf = restore_buffer(buf_data.path)
-    if ok then
-      restored_count = restored_count + 1
-      buffer_map[buf_data.path] = buf
-    end
-  end
+  -- Restoring fires a burst of buffer/window events; redraw the sidebar once at the end.
+  -- resume() must run even if restoring throws, or the sidebar stays frozen.
+  local sidebar = require('pile.windows.sidebar')
+  sidebar.suspend()
 
-  if session.layout and type(session.layout) == 'table' and #session.layout > 0 then
-    log.debug(string.format("Restoring layout with %d windows", #session.layout))
-    restore_window_layout(session.layout, buffer_map)
-  else
-    log.debug("No layout to restore or layout is empty")
+  local restored_count = 0
+  local ok, err = pcall(function()
+    close_empty_nofile_buffers()
+
+    local buffer_map = {}
+    for _, buf_data in ipairs(buffers) do
+      local restored, buf = restore_buffer(buf_data.path)
+      if restored then
+        restored_count = restored_count + 1
+        buffer_map[buf_data.path] = buf
+      end
+    end
+
+    if session.layout and type(session.layout) == 'table' and #session.layout > 0 then
+      log.debug(string.format("Restoring layout with %d windows", #session.layout))
+      restore_window_layout(session.layout, buffer_map)
+    else
+      log.debug("No layout to restore or layout is empty")
+    end
+  end)
+
+  sidebar.resume()
+
+  if not ok then
+    log.error("Failed to restore session '" .. session_name .. "': " .. tostring(err))
   end
 
   if restored_count > 0 then

@@ -1,5 +1,7 @@
 local log = require('pile.log')
 
+local uv = vim.uv or vim.loop
+
 local M = {}
 
 function M.new(config)
@@ -7,6 +9,19 @@ function M.new(config)
     filepath = config.filepath,
     default_data = config.default_data or {},
   }
+
+  -- Decoded contents, kept until the file changes on disk. read() runs on every
+  -- sidebar update, so re-decoding the JSON each time is not affordable.
+  local cache = nil
+  local cache_mtime = nil
+
+  local function file_mtime()
+    local stat = uv.fs_stat(self.filepath)
+    if not stat or not stat.mtime then
+      return nil
+    end
+    return stat.mtime.sec * 1e9 + stat.mtime.nsec
+  end
 
   local function ensure_directory()
     local dir = vim.fn.fnamemodify(self.filepath, ':h')
@@ -16,7 +31,18 @@ function M.new(config)
     end
   end
 
+  --- Drop the cached contents, forcing the next read() to hit disk
+  function self.invalidate()
+    cache = nil
+    cache_mtime = nil
+  end
+
   function self.read()
+    local mtime = file_mtime()
+    if cache and mtime and mtime == cache_mtime then
+      return cache
+    end
+
     if vim.fn.filereadable(self.filepath) == 0 then
       log.debug("File not found, using default data: " .. self.filepath)
       return vim.deepcopy(self.default_data)
@@ -43,6 +69,8 @@ function M.new(config)
     end
 
     log.trace("Read data from: " .. self.filepath)
+    cache = data
+    cache_mtime = mtime
     return data
   end
 
@@ -63,6 +91,9 @@ function M.new(config)
 
     file:write(json_string)
     file:close()
+
+    cache = data
+    cache_mtime = file_mtime()
 
     log.trace("Wrote data to: " .. self.filepath)
     return true
