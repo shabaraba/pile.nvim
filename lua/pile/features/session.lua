@@ -9,8 +9,10 @@ local M = {}
 --- @param buf number Buffer handle
 --- @return boolean True if buffer should be saved
 local function is_saveable_buffer(buf)
+  -- NOTE: nvim_buf_is_loaded() is deliberately not checked. Buffers restored
+  -- but not yet displayed stay unloaded, and dropping them here would shrink
+  -- the session on every quit.
   return vim.api.nvim_buf_is_valid(buf)
-    and vim.api.nvim_buf_is_loaded(buf)
     and vim.api.nvim_buf_get_name(buf) ~= ''
     and vim.bo[buf].buftype == ''
 end
@@ -61,7 +63,8 @@ end
 --- @param path string File path to restore
 --- @return boolean Success status
 --- @return number|nil Buffer handle if successful
-local function restore_buffer(path)
+--- @param load_now boolean|nil Read the file now instead of on first display
+local function restore_buffer(path, load_now)
   if not path or vim.fn.filereadable(path) ~= 1 then
     log.debug("File not readable: " .. (path or "nil"))
     return false, nil
@@ -69,7 +72,12 @@ local function restore_buffer(path)
 
   local buf = vim.fn.bufadd(path)
   if buf > 0 then
-    vim.fn.bufload(buf)
+    -- Only buffers that land in a window need their contents now. The rest are
+    -- registered and read on first display, which keeps FileType/LSP/treesitter
+    -- work off the startup path.
+    if load_now then
+      vim.fn.bufload(buf)
+    end
     log.trace("Restored buffer: " .. path)
     return true, buf
   end
@@ -167,10 +175,17 @@ function M.restore_session(session_name)
     return a.order < b.order
   end)
 
+  local visible = {}
+  for _, win in ipairs(session.layout or {}) do
+    if win.bufpath then
+      visible[win.bufpath] = true
+    end
+  end
+
   local buffer_map = {}
   local restored_count = 0
   for _, buf_data in ipairs(buffers) do
-    local ok, buf = restore_buffer(buf_data.path)
+    local ok, buf = restore_buffer(buf_data.path, visible[buf_data.path] == true)
     if ok then
       restored_count = restored_count + 1
       buffer_map[buf_data.path] = buf

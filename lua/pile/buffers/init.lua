@@ -103,15 +103,25 @@ end
 local function collect_buffer_info()
   local result = {}
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
-      local name = vim.api.nvim_buf_get_name(buf)
+    local name = vim.api.nvim_buf_get_name(buf)
+    -- Unloaded buffers with a name are session entries waiting for first
+    -- display; they belong in the list just like loaded ones.
+    local include = vim.api.nvim_buf_is_valid(buf)
+      and (vim.api.nvim_buf_is_loaded(buf) or name ~= "")
+    if include then
       local window_ids = get_buffer_windows(buf)
+      local filetype = vim.bo[buf].filetype
+      if filetype == "" and name ~= "" then
+        -- vim.bo.filetype is empty until the buffer is read, so fall back to
+        -- matching on the path alone.
+        filetype = vim.filetype.match({ filename = name }) or ""
+      end
       table.insert(result, {
         buf = buf,
         name = name,
         filename = vim.fn.fnamemodify(name, ":t"),
         buftype = vim.bo[buf].buftype,
-        filetype = vim.bo[buf].filetype,
+        filetype = filetype,
         displayed = #window_ids > 0,
         window_ids = window_ids,
       })
