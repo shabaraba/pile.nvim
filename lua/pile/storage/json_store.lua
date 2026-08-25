@@ -86,18 +86,30 @@ function M.new(config)
       return false
     end
 
-    local file = io.open(self.filepath, 'w')
+    -- Write to a sibling temp file and rename over the target. io.open(path, 'w')
+    -- truncates immediately, so writing in place would destroy every saved session
+    -- if the write then failed. rename() within a directory is atomic.
+    local tmp_path = string.format('%s.%d.tmp', self.filepath, vim.fn.getpid())
+
+    local file = io.open(tmp_path, 'w')
     if not file then
-      log.error("Failed to open file for writing: " .. self.filepath)
+      log.error("Failed to open file for writing: " .. tmp_path)
       return false
     end
 
     local written, write_err = file:write(json_string)
     local closed, close_err = file:close()
     if not written or not closed then
-      log.error("Failed to write file: " .. self.filepath .. ": " ..
+      log.error("Failed to write file: " .. tmp_path .. ": " ..
         tostring(write_err or close_err))
-      self.invalidate()
+      os.remove(tmp_path)
+      return false
+    end
+
+    local renamed, rename_err = os.rename(tmp_path, self.filepath)
+    if not renamed then
+      log.error("Failed to replace file: " .. self.filepath .. ": " .. tostring(rename_err))
+      os.remove(tmp_path)
       return false
     end
 
