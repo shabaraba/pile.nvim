@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.1](https://github.com/shabaraba/pile.nvim/compare/v1.3.0...v1.3.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* use GITHUB_TOKEN for release-please and drop dead tag job ([#55](https://github.com/shabaraba/pile.nvim/issues/55)) ([c2a932c](https://github.com/shabaraba/pile.nvim/commit/c2a932cec8ce44d47bee44a4733a9b9450dbad7c))
+
+
+### Performance Improvements
+
+* avoid eager buffer loading and redundant work on session restore ([#54](https://github.com/shabaraba/pile.nvim/issues/54)) ([757189d](https://github.com/shabaraba/pile.nvim/commit/757189d611f8ccab390ba81aa6282f53d27d8d38))
+
 ## [1.3.0](https://github.com/shabaraba/pile.nvim/compare/v1.2.1...v1.3.0) (2026-01-27)
 
 
