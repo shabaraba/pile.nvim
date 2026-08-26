@@ -4,10 +4,19 @@ local log = require 'pile.log'
 local window_colors = require 'pile.window_colors'
 local config = require 'pile.config'
 
+local uv = vim.uv or vim.loop
+
 local buffer_list = {}
 local ns_id = vim.api.nvim_create_namespace('pile_window_indicators')
 local SIDEBAR_WIDTH = 35
 local augroup = vim.api.nvim_create_augroup("PileSidebar", { clear = true })
+local UPDATE_DEBOUNCE_MS = 20
+-- oil.nvim finishes its own buffer bookkeeping asynchronously after FileType,
+-- so that path has always waited longer before reading buffer state (see 912c3ef).
+local OIL_SETTLE_MS = 200
+
+local update_timer = nil
+local pending_delay = nil
 
 local M = {}
 
@@ -308,8 +317,49 @@ function M.toggle()
   end
 end
 
+--- Suspend sidebar updates
+--- Bulk operations (session restore) fire hundreds of buffer/window events;
+--- rebuilding the sidebar for each one is wasted work.
+function M.suspend()
+  M._suspended = true
+end
+
+--- Resume sidebar updates and redraw once
+function M.resume()
+  M._suspended = false
+  pending_delay = nil
+  M.update()
+end
+
+--- Request an update, coalescing bursts of events into a single redraw
+--- @param delay number|nil Milliseconds to wait; defaults to UPDATE_DEBOUNCE_MS
+function M.schedule_update(delay)
+  if M._suspended or M._is_opening then
+    return
+  end
+
+  delay = delay or UPDATE_DEBOUNCE_MS
+  -- A pending longer wait must not be cut short by a later quick event
+  if pending_delay and pending_delay > delay then
+    delay = pending_delay
+  end
+  pending_delay = delay
+
+  if not update_timer then
+    update_timer = uv.new_timer()
+  end
+  update_timer:stop()
+  update_timer:start(delay, 0, vim.schedule_wrap(function()
+    if update_timer then
+      update_timer:stop()
+    end
+    pending_delay = nil
+    M.update()
+  end))
+end
+
 function M.update()
-  if M._is_opening then
+  if M._is_opening or M._suspended then
     return
   end
 
@@ -336,7 +386,7 @@ vim.api.nvim_create_autocmd({"BufAdd", "BufLeave", "BufEnter"}, {
   callback = function()
     if vim.api.nvim_get_current_buf() ~= globals.sidebar_buf then
       log.debug("Buffer event - updating sidebar")
-      M.update()
+      M.schedule_update()
     end
   end
 })
@@ -345,9 +395,7 @@ vim.api.nvim_create_autocmd("FileType", {
   pattern = "*",
   callback = function(ev)
     if ev.match ~= "oil" and ev.match ~= "oilBrowser" then
-      vim.defer_fn(function()
-        M.update()
-      end, 200)
+      M.schedule_update(OIL_SETTLE_MS)
     end
   end
 })

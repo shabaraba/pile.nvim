@@ -100,10 +100,17 @@ local function process_duplicate_files(buffers_group, filename)
   end
 end
 
+--- Buffers restored from a session are listed but not loaded until first shown,
+--- so listing only loaded buffers would hide most of the session from the sidebar.
+local function is_trackable_buffer(buf)
+  return vim.api.nvim_buf_is_valid(buf)
+    and (vim.api.nvim_buf_is_loaded(buf) or vim.bo[buf].buflisted)
+end
+
 local function collect_buffer_info()
   local result = {}
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) then
+    if is_trackable_buffer(buf) then
       local name = vim.api.nvim_buf_get_name(buf)
       local window_ids = get_buffer_windows(buf)
       table.insert(result, {

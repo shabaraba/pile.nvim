@@ -33,17 +33,10 @@ local function setup_highlights()
 end
 
 local function setup_autocmds()
-  vim.api.nvim_create_autocmd({"WinNew", "WinEnter"}, {
+  vim.api.nvim_create_autocmd({"WinNew", "WinEnter", "BufEnter", "BufWinEnter"}, {
     pattern = "*",
     callback = function()
-      sidebar.update()
-    end
-  })
-
-  vim.api.nvim_create_autocmd({"BufEnter", "BufWinEnter"}, {
-    pattern = "*",
-    callback = function()
-      sidebar.update()
+      sidebar.schedule_update()
     end
   })
 

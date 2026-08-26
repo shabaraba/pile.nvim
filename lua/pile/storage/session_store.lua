@@ -7,6 +7,7 @@ local M = {}
 local DEFAULT_SESSION = 'default'
 
 local store_cache = {}
+local project_id_cache = {}
 
 local function string_hash(str)
   local hash = 0
@@ -16,18 +17,27 @@ local function string_hash(str)
   return string.format("%08x", hash)
 end
 
-local function get_project_id()
-  local git_root = git_utils.get_git_root()
-  if git_root then
-    local basename = vim.fn.fnamemodify(git_root, ':t')
-    local hash = string_hash(git_root)
-    return basename .. '-' .. hash
+--- Resolve the project id for a working directory
+--- Memoized per cwd: get_git_root spawns a git subprocess, and this runs on
+--- every store access (which happens on every sidebar update).
+local function get_project_id(cwd)
+  local cached = project_id_cache[cwd]
+  if cached then
+    return cached
   end
-  return 'global'
+
+  local project_id = 'global'
+  local git_root = git_utils.get_git_root(cwd)
+  if git_root then
+    project_id = vim.fn.fnamemodify(git_root, ':t') .. '-' .. string_hash(git_root)
+  end
+
+  project_id_cache[cwd] = project_id
+  return project_id
 end
 
 local function get_data_path()
-  local project_id = get_project_id()
+  local project_id = get_project_id(vim.fn.getcwd())
   return vim.fn.stdpath('data') .. '/pile/sessions-' .. project_id .. '.json'
 end
 
@@ -60,6 +70,15 @@ local function build_buffer_data(buffers)
     })
   end
   return buffer_data
+end
+
+--- Clear memoized project ids
+--- Exposed so a changed git worktree (e.g. after :tcd) can be picked up.
+function M.clear_cache()
+  project_id_cache = {}
+  for _, store in pairs(store_cache) do
+    store.invalidate()
+  end
 end
 
 function M.get_all_sessions()
