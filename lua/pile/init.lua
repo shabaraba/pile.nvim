@@ -8,11 +8,11 @@ local M = {}
 
 local function check_dependencies()
   log.trace("Checking dependencies...")
-  local has_nui = pcall(require, "nui.popup")
-  if not has_nui then
-    log.error("Required dependency nui.nvim not found. Please install it with your plugin manager.")
+  local has_window_picker = pcall(require, "window-picker")
+  if not has_window_picker then
+    log.error("Required dependency nvim-window-picker not found. Please install it with your plugin manager.")
     vim.notify(
-      "pile.nvim requires nui.nvim to be installed. Please add it to your plugin manager.",
+      "pile.nvim requires s1n7ax/nvim-window-picker to be installed. Please add it to your plugin manager.",
       vim.log.levels.ERROR
     )
     return false

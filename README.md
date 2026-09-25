@@ -28,7 +28,7 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 ## Requirements
 
 - Neovim 0.5 or later
-- [nui.nvim](https://github.com/MunifTanjim/nui.nvim) - Required for UI components
+- [nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) - Required for choosing which window to open a buffer in
 - LSP configuration for full renaming functionality (optional)
 
 ## Installation
@@ -39,7 +39,7 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 {
   'shabaraba/pile.nvim',
   dependencies = {
-    'MunifTanjim/nui.nvim', -- Required dependency
+    's1n7ax/nvim-window-picker', -- Required dependency
   },
   opts = {}
 }
@@ -50,7 +50,7 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 ```lua
 use {
   'shabaraba/pile.nvim',
-  requires = { 'MunifTanjim/nui.nvim' }, -- Required dependency
+  requires = { 's1n7ax/nvim-window-picker' }, -- Required dependency
   config = function()
     require('pile').setup()
   end
@@ -60,7 +60,7 @@ use {
 ### Using [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
-Plug 'MunifTanjim/nui.nvim'  " Required dependency
+Plug 's1n7ax/nvim-window-picker'  " Required dependency
 Plug 'shabaraba/pile.nvim'
 ```
 
@@ -86,6 +86,13 @@ require('pile').setup({
     },
   },
 
+  -- Window picker (passed through to nvim-window-picker)
+  window_picker = {
+    hint = "floating-big-letter",     -- "statusline-winbar" | "floating-big-letter"
+    selection_chars = "FJDKSLA;CMRUEIWOQP",
+    prompt_message = "Pick window to open buffer: ",
+  },
+
   -- Debug settings
   debug = {
     enabled = false,
@@ -93,6 +100,16 @@ require('pile').setup({
   },
 })
 ```
+
+### Window Selection
+
+When more than one window is open, choosing a buffer in the sidebar asks
+[nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) which window to open it in.
+
+Anything set in `window_picker` is passed straight to `pick_window()` and overrides your global
+`require('window-picker').setup()` options for pile's picker only. Leave it empty to use your
+global settings as-is. `filter_func` is managed by pile — it restricts the candidates to the
+windows the sidebar can open a buffer in, so setting it has no effect.
 
 ## Key Features:
 
