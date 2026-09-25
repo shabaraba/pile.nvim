@@ -50,6 +50,8 @@ M.setup = function(opts)
     }),
   }
 
+  M.window_picker = set_default("window_picker", {})
+
   M.session = {
     auto_save = set_default("session.auto_save", true),
     auto_restore = set_default("session.auto_restore", true),

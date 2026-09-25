@@ -1,12 +1,10 @@
 local globals = require('pile.globals')
 local window = require('pile.windows')
-local popup = require('pile.windows.popup')
+local picker = require('pile.windows.picker')
 local log = require('pile.log')
 local config = require('pile.config')
 
 local M = {}
-
-local selected_buffer = nil
 
 local function get_buffer_windows(buf)
   local windows = {}
@@ -173,17 +171,10 @@ function M.get_current()
   return vim.api.nvim_get_current_buf()
 end
 
-local function open_selected_callback(choice)
-  if choice then
-    window.set_buffer(choice, selected_buffer.buf)
-  end
-  popup.unmount()
-end
-
 function M.open_selected(props)
   local cursor = vim.api.nvim_win_get_cursor(globals.sidebar_win)
   local line = cursor[1]
-  selected_buffer = M.get_list()[line]
+  local selected_buffer = M.get_list()[line]
   if not selected_buffer then
     print("No buffer selected.")
     return
@@ -193,7 +184,10 @@ function M.open_selected(props)
   if window_count == 1 then
     window.set_buffer(props.available_windows[1], selected_buffer.buf)
   elseif window_count > 1 then
-    popup.select_window(props.available_windows, open_selected_callback)
+    local target_win = picker.select_window(props.available_windows)
+    if target_win then
+      window.set_buffer(target_win, selected_buffer.buf)
+    end
   else
     window.set_buffer(nil, selected_buffer.buf)
   end
