@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/shabaraba/pile.nvim/compare/v1.3.1...v2.0.0) (2026-09-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* s1n7ax/nvim-window-picker is now a required dependency and nui.nvim is no longer required.
+
+### Features
+
+* use nvim-window-picker to choose the target window ([#57](https://github.com/shabaraba/pile.nvim/issues/57)) ([a99c5c0](https://github.com/shabaraba/pile.nvim/commit/a99c5c005a53d383894e11e55cd0d376a44e0bba))
+
 ## [1.3.1](https://github.com/shabaraba/pile.nvim/compare/v1.3.0...v1.3.1) (2026-08-26)
 
 
