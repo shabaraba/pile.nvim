@@ -93,6 +93,12 @@ local function setup_commands()
   vim.api.nvim_create_user_command("PileMoveBufferDown", M.move_buffer_down, {
     desc = "move current buffer down in sidebar"
   })
+  vim.api.nvim_create_user_command("PileSort", M.sort_buffers, {
+    nargs = 1,
+    bang = true,
+    complete = function() return require('pile.features.sort').KEYS end,
+    desc = "sort buffers in sidebar (! to reverse)"
+  })
 end
 
 function M.setup(opts)
@@ -219,6 +225,24 @@ end
 
 function M.move_buffer_down()
   move_buffer("down")
+end
+
+function M.sort_buffers(opts)
+  local reorder = require('pile.features.reorder')
+  if not reorder.is_enabled() then
+    print("PileSort requires session.preserve_order = true")
+    return
+  end
+
+  local sort = require('pile.features.sort')
+  local sorted = sort.sort(buffers.get_list(), opts.args, opts.bang)
+  if not sorted then
+    print("Unknown sort key: " .. opts.args .. " (" .. table.concat(sort.KEYS, ", ") .. ")")
+    return
+  end
+  reorder.save_buffer_order(sorted)
+  sidebar.update()
+  print("Sorted buffers by " .. opts.args .. (opts.bang and " (reversed)" or ""))
 end
 
 return M

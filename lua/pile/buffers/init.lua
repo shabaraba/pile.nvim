@@ -2,7 +2,6 @@ local globals = require('pile.globals')
 local window = require('pile.windows')
 local picker = require('pile.windows.picker')
 local log = require('pile.log')
-local config = require('pile.config')
 local filter = require('pile.buffers.filter')
 
 local M = {}
@@ -119,6 +118,7 @@ function M.get_list()
         buf = info.buf,
         name = info.name,
         filename = info.filename,
+        filetype = info.filetype,
         window_ids = info.window_ids,
       })
     end
@@ -141,8 +141,8 @@ function M.get_list()
     log.debug(string.format("[%d] buf: %d, filename: %s", i, buffer.buf, buffer.filename))
   end
 
-  if config.session and config.session.preserve_order then
-    local reorder = require('pile.features.reorder')
+  local reorder = require('pile.features.reorder')
+  if reorder.is_enabled() then
     buffer_list = reorder.sort_buffers_by_session_order(buffer_list)
   end
 

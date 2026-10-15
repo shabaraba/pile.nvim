@@ -1,4 +1,5 @@
 local session_store = require('pile.storage.session_store')
+local config = require('pile.config')
 local log = require('pile.log')
 
 local M = {}
@@ -135,6 +136,11 @@ function M.shift(buffer_list, index, step)
   end
   M.save_buffer_order(M.move_buffer(index, target, buffer_list))
   return true
+end
+
+--- Whether the sidebar follows the saved manual order (session.preserve_order)
+function M.is_enabled()
+  return config.session and config.session.preserve_order or false
 end
 
 function M.save_buffer_order(buffer_list)

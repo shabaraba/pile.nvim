@@ -180,7 +180,12 @@ A buffer matches when any one field matches.
 ```vim
 :PileMoveBufferUp                " Move current buffer up in sidebar
 :PileMoveBufferDown              " Move current buffer down in sidebar
+:PileSort {key}                  " Sort buffers once by name / path / extension / filetype / recent
+:PileSort! {key}                 " Same, in reverse order
 ```
+
+`:PileSort` saves the sorted result as the custom order, so you can keep adjusting it by hand
+afterwards. It requires `session.preserve_order = true`.
 
 ### Keybindings
 
