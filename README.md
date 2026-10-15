@@ -93,6 +93,20 @@ require('pile').setup({
     prompt_message = "Pick window to open buffer: ",
   },
 
+  -- Hide matching buffers from the sidebar
+  exclude = {
+    filenames = {},           -- Lua patterns matched against the full buffer name, e.g. "^term://"
+    filetypes = {},           -- e.g. "lazygit", "qf"
+    buftypes = {},            -- e.g. "terminal"
+  },
+
+  -- Show unlisted buffers that match (same fields as `exclude`)
+  include = {
+    filenames = {},
+    filetypes = {},           -- e.g. "toggleterm"
+    buftypes = {},
+  },
+
   -- Debug settings
   debug = {
     enabled = false,
@@ -110,6 +124,17 @@ Anything set in `window_picker` is passed straight to `pick_window()` and overri
 `require('window-picker').setup()` options for pile's picker only. Leave it empty to use your
 global settings as-is. `filter_func` is managed by pile — it restricts the candidates to the
 windows the sidebar can open a buffer in, so setting it has no effect.
+
+### Buffer Filtering
+
+The sidebar lists the same buffers as `:ls` — listed buffers only. Unlisted buffers that plugins
+create internally, such as the terminal a picker like fzf-lua runs in, or help pages, are hidden.
+A terminal opened with `:terminal` is listed, so it is shown.
+
+- `include` brings back unlisted buffers that match, e.g. `filetypes = { "toggleterm" }`.
+- `exclude` hides buffers that match, whether listed or not. It wins over `include`.
+
+A buffer matches when any one field matches.
 
 ## Key Features:
 

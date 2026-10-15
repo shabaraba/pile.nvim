@@ -52,6 +52,14 @@ M.setup = function(opts)
 
   M.window_picker = set_default("window_picker", {})
 
+  for _, rule in ipairs({ "exclude", "include" }) do
+    M[rule] = {
+      filenames = set_default(rule .. ".filenames", {}),
+      filetypes = set_default(rule .. ".filetypes", {}),
+      buftypes = set_default(rule .. ".buftypes", {}),
+    }
+  end
+
   M.session = {
     auto_save = set_default("session.auto_save", true),
     auto_restore = set_default("session.auto_restore", true),
