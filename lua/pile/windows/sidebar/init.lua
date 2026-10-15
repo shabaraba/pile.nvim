@@ -5,6 +5,7 @@ local preview = require 'pile.windows.preview'
 local render = require 'pile.windows.sidebar.render'
 local keymaps = require 'pile.windows.sidebar.keymaps'
 local status_watch = require 'pile.windows.sidebar.status_watch'
+local layout = require 'pile.windows.layout'
 
 local uv = vim.uv or vim.loop
 
@@ -19,15 +20,38 @@ local OIL_SETTLE_MS = 200
 local update_timer = nil
 local pending_delay = nil
 
+-- Split layout around the last open, so close can restore the exact sizes
+-- instead of re-scaling (and accumulating rounding drift) when nothing changed.
+local layout_before_open = nil
+local layout_after_open = nil
+
 local M = {}
 
+local function is_sidebar_win(win)
+  return win == globals.sidebar_win
+end
+
 local function create_sidebar()
+  local before = layout.capture()
+
   globals.sidebar_buf = vim.api.nvim_create_buf(false, true)
-  vim.cmd('topleft vsplit')
+  layout.without_equalalways(function()
+    vim.cmd('topleft ' .. SIDEBAR_WIDTH .. 'vsplit')
+  end)
   globals.sidebar_win = vim.api.nvim_get_current_win()
 
   vim.api.nvim_win_set_buf(globals.sidebar_win, globals.sidebar_buf)
+  vim.wo[globals.sidebar_win].winfixwidth = true
   vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
+
+  -- The split takes its columns from the rightmost window; spread the loss
+  -- over all splits so their ratios stay as the user arranged them.
+  if before then
+    layout.apply(before, nil, is_sidebar_win)
+    vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
+  end
+  layout_before_open = before
+  layout_after_open = layout.capture(is_sidebar_win)
 end
 
 function M.get_buffer_list()
@@ -73,9 +97,24 @@ end
 function M.close()
   if M.is_opened() then
     preview.close()
-    vim.api.nvim_win_close(globals.sidebar_win, true)
+
+    local current = layout.capture(is_sidebar_win)
+    local source = current
+    if layout_before_open and vim.deep_equal(current, layout_after_open) then
+      source = layout_before_open
+    end
+    layout_before_open, layout_after_open = nil, nil
+
+    layout.without_equalalways(function()
+      vim.api.nvim_win_close(globals.sidebar_win, true)
+    end)
     globals.sidebar_win = nil
     globals.sidebar_buf = nil
+
+    -- Closing hands all freed columns to one neighbour; give them back proportionally
+    if source then
+      layout.apply(source)
+    end
   else
     print("No sidebar to close.")
   end

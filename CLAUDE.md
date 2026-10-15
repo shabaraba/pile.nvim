@@ -39,6 +39,7 @@ lua/pile/
 │   │   ├── marks.lua    # Right-aligned unsaved/git status marks
 │   │   ├── status_watch.lua # Autocmds that refresh modified/git state
 │   │   └── edit_mode.lua  # Editable sidebar for aliases (a) and file renames (e)
+│   ├── layout.lua     # Split-tree snapshots; re-applies split ratios after toggle/restore
 │   ├── preview.lua    # Floating preview that follows the sidebar cursor
 │   └── popup.lua      # Window selection popup using nui.nvim
 └── repositories/
