@@ -1,6 +1,7 @@
 local globals = require 'pile.globals'
 local buffers = require 'pile.buffers'
 local log = require 'pile.log'
+local preview = require 'pile.windows.preview'
 local render = require 'pile.windows.sidebar.render'
 local keymaps = require 'pile.windows.sidebar.keymaps'
 local status_watch = require 'pile.windows.sidebar.status_watch'
@@ -33,6 +34,10 @@ function M.get_buffer_list()
   return buffer_list
 end
 
+function M.get_buffer_at_cursor()
+  return buffer_list[vim.api.nvim_win_get_cursor(globals.sidebar_win)[1]]
+end
+
 function M.open()
   if M.is_opened() then
     print("Sidebar already open.")
@@ -55,6 +60,8 @@ function M.open()
     desc = "Clear pile register when leaving sidebar"
   })
 
+  preview.attach(M)
+
   M._is_opening = false
   status_watch.refresh_git()
 end
@@ -65,6 +72,7 @@ end
 
 function M.close()
   if M.is_opened() then
+    preview.close()
     vim.api.nvim_win_close(globals.sidebar_win, true)
     globals.sidebar_win = nil
     globals.sidebar_buf = nil
@@ -152,7 +160,8 @@ status_watch.setup(M)
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "*",
   callback = function(ev)
-    if ev.match ~= "oil" and ev.match ~= "oilBrowser" then
+    -- Unlisted buffers (preview scratch, plugin UIs) never appear in the sidebar
+    if vim.bo[ev.buf].buflisted and ev.match ~= "oil" and ev.match ~= "oilBrowser" then
       M.schedule_update(OIL_SETTLE_MS)
     end
   end

@@ -11,7 +11,8 @@ local function get_buffer_windows(buf)
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_is_valid(win) then
       local win_buf = vim.api.nvim_win_get_buf(win)
-      if win_buf == buf and win ~= globals.sidebar_win and win_buf ~= globals.sidebar_buf then
+      if win_buf == buf and win ~= globals.sidebar_win and win_buf ~= globals.sidebar_buf
+        and window.is_normal_window(win) then
         table.insert(windows, win)
       end
     end
@@ -153,10 +154,9 @@ function M.get_current()
   return vim.api.nvim_get_current_buf()
 end
 
+--- @param props { buffer: table|nil, available_windows: number[] }
 function M.open_selected(props)
-  local cursor = vim.api.nvim_win_get_cursor(globals.sidebar_win)
-  local line = cursor[1]
-  local selected_buffer = M.get_list()[line]
+  local selected_buffer = props.buffer
   if not selected_buffer then
     print("No buffer selected.")
     return

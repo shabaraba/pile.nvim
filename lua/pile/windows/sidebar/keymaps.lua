@@ -1,6 +1,7 @@
 local globals = require 'pile.globals'
 local register = require 'pile.features.register'
 local reorder = require 'pile.features.reorder'
+local preview = require 'pile.windows.preview'
 
 local M = {}
 
@@ -33,11 +34,9 @@ local function set_keymap(mode, lhs, callback, desc)
   })
 end
 
---- @param sidebar table Sidebar module providing get_buffer_list() and update()
+--- @param sidebar table Sidebar module providing get_buffer_list(), get_buffer_at_cursor() and update()
 function M.setup(sidebar)
-  local function buffer_at_cursor()
-    return sidebar.get_buffer_list()[get_current_line()]
-  end
+  local buffer_at_cursor = sidebar.get_buffer_at_cursor
 
   local function selected_buffers()
     local from_line, to_line = get_visual_range()
@@ -80,7 +79,10 @@ function M.setup(sidebar)
 
   set_keymap('n', '<CR>', function()
     local available_windows = require('pile.windows').get_available_windows()
-    require('pile.buffers').open_selected({ available_windows = available_windows })
+    require('pile.buffers').open_selected({
+      buffer = sidebar.get_buffer_at_cursor(),
+      available_windows = available_windows,
+    })
   end, "Open buffer")
 
   set_keymap('n', 'dd', function()
@@ -123,6 +125,10 @@ function M.setup(sidebar)
       print("Buffer deleted")
     end
   end, "Delete buffer immediately")
+
+  set_keymap('n', 'K', function()
+    preview.toggle(sidebar.get_buffer_at_cursor())
+  end, "Toggle preview")
 
   set_keymap('n', '<C-j>', function() move_line(1) end, "Move buffer down")
   set_keymap('n', '<C-k>', function() move_line(-1) end, "Move buffer up")

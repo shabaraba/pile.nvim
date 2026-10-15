@@ -59,6 +59,11 @@ M.setup = function(opts)
     git = set_default("marks.git", true),
   }
 
+  M.preview = {
+    auto_open = set_default("preview.auto_open", false),
+    border = set_default("preview.border", "rounded"),
+  }
+
   M.window_picker = set_default("window_picker", {})
 
   for _, rule in ipairs({ "exclude", "include" }) do
