@@ -1,276 +1,242 @@
 # pile.nvim
 
 ![](https://img.shields.io/badge/license-MIT-blue.svg)
+![](https://img.shields.io/badge/Neovim-0.10%2B-green.svg)
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/7ad5a015-f188-45ea-870d-b37084d23934" width="300">
 </div>
 
-Display buffer vertically. It aims to be as easy to use as a stack of books.
+A vertical buffer sidebar for Neovim — your open buffers, stacked like a pile of books.
 
-## Overview
+pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: reorder them with
+`dd` / `p`, give them display names, or rename the files on disk with `:w`, in the spirit of
+[oil.nvim](https://github.com/stevearc/oil.nvim). The order you choose is remembered per project.
 
-pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to how books are stacked in a pile. It offers an intuitive and simple way to browse, rename, and manage open buffers. Inspired by the user-friendly experience of oil.nvim, but designed for vertical organization.
+## ✨ Features
 
-## Features
+- **Buffer sidebar** — lists the same buffers as `:ls`, highlights the current one, and opens a
+  buffer in the window you pick
+- **Vim-like reordering** — `dd` / `yy` / `p` / `P`, `<C-j>` / `<C-k>`, visual-mode selections,
+  and `:PileSort`
+- **Per-project sessions** — the buffer list and its order are saved on exit and restored on
+  startup; named sessions let you switch between buffer sets
+- **Edit in place** — rename the display name of a buffer (`a`) or the file itself (`e`), and let
+  the language server update imports (`workspace/willRenameFiles`)
+- **At-a-glance status** — file icons, unsaved-change mark (`●`), git status letter, and a colored
+  marker for every window that shows the buffer
+- **Floating preview** that follows the cursor (`K`)
+- **Same-name disambiguation** — `api/index.ts` and `web/index.ts` instead of two `index.ts`
 
-- ✅ **Session Management**: Auto-restore previous buffers on startup
-- ✅ **Named Sessions**: Save and switch between different buffer sets
-- ✅ **Custom Buffer Order**: Freely reorder buffers and persist the order
-- ✅ Vertical sidebar listing all open buffers
-- ✅ Easily switch between buffers with keyboard shortcuts
-- ✅ Smart duplicate filename resolution
-- ✅ Visual window indicators
-- ✅ File icons (mini.icons / nvim-web-devicons)
-- ✅ Unsaved-change and git status marks
-- ✅ Edit display names (aliases) directly in the sidebar
-- ✅ Rename / move files by editing their paths in the sidebar
-- ✅ LSP integration: Automatically updates import paths when a file is renamed
+## ⚡️ Requirements
 
-## Requirements
+- Neovim **0.10** or later
+- [s1n7ax/nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) (required)
+- Optional:
+  - [mini.icons](https://github.com/echasnovski/mini.icons) or
+    [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) for file icons
+  - `git` on `$PATH` for git status marks and per-repository sessions
+  - A language server that supports `workspace/willRenameFiles` to update imports on rename
 
-- Neovim 0.5 or later
-- [nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) - Required for choosing which window to open a buffer in
-- [mini.icons](https://github.com/echasnovski/mini.icons) or [nvim-web-devicons](https://github.com/nvim-tree/nvim-web-devicons) for file icons (optional)
-- LSP configuration for full renaming functionality (optional)
+## 📦 Installation
 
-## Installation
+`setup()` must be called — it registers the commands and autocommands.
 
-### Using [Lazy.nvim](https://github.com/folke/lazy.nvim)
+<details open>
+<summary><a href="https://github.com/folke/lazy.nvim">lazy.nvim</a></summary>
 
 ```lua
 {
-  'shabaraba/pile.nvim',
-  dependencies = {
-    's1n7ax/nvim-window-picker', -- Required dependency
-  },
-  opts = {}
+  "shabaraba/pile.nvim",
+  dependencies = { "s1n7ax/nvim-window-picker" },
+  lazy = false,
+  opts = {},
 }
 ```
 
-### Using [Packer.nvim](https://github.com/wbthomason/packer.nvim)
+Load it eagerly (as above) if you use `session.auto_restore`: the session is restored when
+`setup()` runs, so lazy-loading on `keys` or `cmd` would restore it — and reset your window
+layout — the first time you press the key.
+
+</details>
+
+<details>
+<summary><a href="https://github.com/wbthomason/packer.nvim">packer.nvim</a></summary>
 
 ```lua
 use {
-  'shabaraba/pile.nvim',
-  requires = { 's1n7ax/nvim-window-picker' }, -- Required dependency
+  "shabaraba/pile.nvim",
+  requires = { "s1n7ax/nvim-window-picker" },
   config = function()
-    require('pile').setup()
-  end
+    require("pile").setup()
+  end,
 }
 ```
 
-### Using [vim-plug](https://github.com/junegunn/vim-plug)
+</details>
+
+<details>
+<summary><a href="https://github.com/junegunn/vim-plug">vim-plug</a></summary>
 
 ```vim
-Plug 's1n7ax/nvim-window-picker'  " Required dependency
+Plug 's1n7ax/nvim-window-picker'
 Plug 'shabaraba/pile.nvim'
+
+" after plug#end()
+lua require('pile').setup()
 ```
 
-## Setup and Configuration
+</details>
 
-To configure pile.nvim, add the following setup function to your Neovim config:
+## 🚀 Quick start
+
+pile.nvim does not define global keymaps. A typical set:
 
 ```lua
-require('pile').setup({
-  -- Session management
+vim.keymap.set("n", "<leader>pp", "<cmd>PileToggle<cr>", { desc = "Pile: toggle sidebar" })
+vim.keymap.set("n", "]b", "<cmd>PileGoToNextBuffer<cr>", { desc = "Pile: next buffer" })
+vim.keymap.set("n", "[b", "<cmd>PileGoToPrevBuffer<cr>", { desc = "Pile: previous buffer" })
+```
+
+Open the sidebar, move to a buffer and press `<CR>`. Press `dd` on a line, move, and press `p` to
+put it somewhere else. Quit Neovim and start it again in the same project: the buffers come back in
+that order.
+
+## ⚙️ Configuration
+
+Every option is optional. These are the defaults:
+
+<details>
+<summary>Default options</summary>
+
+```lua
+require("pile").setup({
   session = {
-    auto_save = true,         -- Auto-save session on exit
-    auto_restore = true,      -- Auto-restore session on startup
-    preserve_order = true,    -- Preserve buffer order
+    auto_save = true,       -- save the buffer list to the current session on exit
+    auto_restore = true,    -- restore the current session on startup (skipped when files are passed on the command line)
+    preserve_order = true,  -- keep the order you set; required by reordering and :PileSort
   },
 
-  -- Window indicator
   window_indicator = {
-    enabled = true,           -- Show window indicators
-    colors = {                -- Color palette for indicators
-      "#E06C75", "#98C379", "#E5C07B", "#61AFEF",
-      "#C678DD", "#56B6C2", "#D19A66", "#ABB2BF",
+    enabled = true,         -- mark each window that shows the buffer with a colored "█"
+    colors = {              -- assigned to windows in turn
+      "#E06C75", "#98C379", "#E5C07B", "#61AFEF", "#C678DD",
+      "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
     },
   },
 
-  -- File icons (uses mini.icons if set up, otherwise nvim-web-devicons)
   icons = {
-    enabled = true,
+    enabled = true,         -- mini.icons (if set up), otherwise nvim-web-devicons
   },
 
-  -- Right-aligned status marks
   marks = {
-    modified = true,          -- ● for buffers with unsaved changes
-    git = true,               -- git status letter (M, A, D, R, ? ...)
+    modified = true,        -- "●" for buffers with unsaved changes
+    git = true,             -- git status letter: M, A, D, R, ? ...
   },
 
-  -- Floating preview (toggle with K in the sidebar)
   preview = {
-    auto_open = false,        -- Show the preview whenever the sidebar is focused
-    border = "rounded",       -- Any value accepted by nvim_open_win()
+    auto_open = false,      -- open the preview whenever the sidebar is focused
+    border = "rounded",     -- any 'border' accepted by nvim_open_win()
   },
 
-  -- File renaming from the sidebar (e)
   rename = {
-    confirm = true,           -- Ask before renaming files on disk
+    confirm = true,         -- ask before renaming files on disk (e)
   },
 
-  -- Window picker (passed through to nvim-window-picker)
-  window_picker = {
-    hint = "floating-big-letter",     -- "statusline-winbar" | "floating-big-letter"
-    selection_chars = "FJDKSLA;CMRUEIWOQP",
-    prompt_message = "Pick window to open buffer: ",
-  },
+  window_picker = {},       -- passed to nvim-window-picker's pick_window(), see below
 
-  -- Hide matching buffers from the sidebar
-  exclude = {
-    filenames = {},           -- Lua patterns matched against the full buffer name, e.g. "^term://"
-    filetypes = {},           -- e.g. "lazygit", "qf"
-    buftypes = {},            -- e.g. "terminal"
-  },
-
-  -- Show unlisted buffers that match (same fields as `exclude`)
-  include = {
-    filenames = {},
-    filetypes = {},           -- e.g. "toggleterm"
+  exclude = {               -- hide matching buffers
+    filenames = {},         -- Lua patterns against the full buffer name, e.g. "^term://"
+    filetypes = {},
     buftypes = {},
   },
 
-  -- Debug settings
+  include = {               -- show matching unlisted buffers, e.g. filetypes = { "toggleterm" }
+    filenames = {},
+    filetypes = {},
+    buftypes = {},
+  },
+
   debug = {
     enabled = false,
-    level = "info",           -- "error", "warn", "info", "debug", "trace"
+    level = "info",         -- "error" | "warn" | "info" | "debug" | "trace"
   },
 })
 ```
 
-### Window Selection
+</details>
 
-When more than one window is open, choosing a buffer in the sidebar asks
-[nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) which window to open it in.
+`window_picker` overrides your global `require("window-picker").setup()` options for pile only,
+for example `{ hint = "floating-big-letter" }`. Its `filter_func` is always replaced by pile.
 
-Anything set in `window_picker` is passed straight to `pick_window()` and overrides your global
-`require('window-picker').setup()` options for pile's picker only. Leave it empty to use your
-global settings as-is. `filter_func` is managed by pile — it restricts the candidates to the
-windows the sidebar can open a buffer in, so setting it has no effect.
+See [handbook/configuration.md](handbook/configuration.md) for each option in detail.
 
-### Buffer Filtering
+## 📖 Usage
 
-The sidebar lists the same buffers as `:ls` — listed buffers only. Unlisted buffers that plugins
-create internally, such as the terminal a picker like fzf-lua runs in, or help pages, are hidden.
-A terminal opened with `:terminal` is listed, so it is shown.
+### Commands
 
-- `include` brings back unlisted buffers that match, e.g. `filetypes = { "toggleterm" }`.
-- `exclude` hides buffers that match, whether listed or not. It wins over `include`.
+| Command | Description |
+| --- | --- |
+| `:PileToggle` | Open or close the sidebar |
+| `:PileGoToNextBuffer` / `:PileGoToPrevBuffer` | Go to the next / previous buffer in sidebar order (wraps around) |
+| `:PileMoveBufferUp` / `:PileMoveBufferDown` | Move the current buffer one position in the sidebar |
+| `:PileSort[!] {key}` | Sort once by `name`, `path`, `extension`, `filetype` or `recent`; `!` reverses |
+| `:PileSaveSession [name]` | Save the buffer list to the current session, or to `name` |
+| `:PileRestoreSession [name]` | Load the buffers and windows of the current session, or of `name` |
+| `:PileCreateSession {name}` | Save the buffer list as a new session (does not switch to it) |
+| `:PileSwitchSession {name}` | Save the current session, then make `name` current and restore it |
+| `:PileDeleteSession {name}` | Delete a session (not the current one, and never `default`) |
+| `:PileListSessions` | List sessions; `*` marks the current one |
 
-A buffer matches when any one field matches.
+### Sidebar keymaps
 
-## Key Features:
+| Key | Mode | Action |
+| --- | --- | --- |
+| `<CR>` | n | Open the buffer (asks which window when there are several) |
+| `K` | n | Toggle the floating preview |
+| `dd` / `d` | n / x | Cut: close the buffer(s) and keep them in pile's register |
+| `yy` / `y` | n / x | Yank the buffer(s) into pile's register |
+| `p` / `P` | n | Put the register below / above the cursor |
+| `D` | n | Close the buffer immediately, **discarding unsaved changes** |
+| `<C-j>` / `<C-k>` | n, x | Move the buffer(s) down / up |
+| `a` | n | Edit display names; `:w` applies, `q` cancels |
+| `e` | n | Edit file paths; `:w` renames files on disk, `q` cancels |
 
-1. Open Buffers: The sidebar shows all open buffers, with the current buffer highlighted.
+Close the sidebar with `:PileToggle` or `:close`. The register is cleared when you leave the
+sidebar window.
 
-## Usage
+### Highlight groups
 
-### Basic Commands
+| Group | Default | Used for |
+| --- | --- | --- |
+| `SidebarCurrentBuffer` | `bg=#3E4452 fg=Red` | Current buffer line |
+| `PileAlias` | links to `Special` | Buffers with a display name |
+| `PileModified` | links to `WarningMsg` | `●` mark |
+| `PileGitModified` | links to `Changed` | `M`, `R` and other git letters |
+| `PileGitAdded` | links to `Added` | `A` |
+| `PileGitDeleted` | links to `Removed` | `D` |
+| `PileGitUntracked` | links to `Comment` | `?` |
 
-```vim
-:PileToggle              " Toggle the sidebar
-:PileGoToNextBuffer      " Switch to next buffer
-:PileGoToPrevBuffer      " Switch to previous buffer
-```
+The `Pile*` groups are defined with `default = true`, so your colorscheme or config can override
+them. `SidebarCurrentBuffer` is set unconditionally by `setup()`; override it after `setup()`.
 
-### Session Management Commands
+## 📚 Handbook
 
-```vim
-:PileSaveSession [name]          " Save current buffers to session
-:PileRestoreSession [name]       " Restore session
-:PileCreateSession <name>        " Create new named session
-:PileSwitchSession <name>        " Switch to another session
-:PileDeleteSession <name>        " Delete a session
-:PileListSessions                " List all sessions
-```
+Detailed behavior lives in [`handbook/`](handbook/):
 
-### Buffer Reordering Commands
+- [Configuration](handbook/configuration.md) — every option, buffer filtering, window picker
+- [Sidebar](handbook/sidebar.md) — layout, opening buffers, register, reordering, sorting, preview, marks
+- [Sessions](handbook/sessions.md) — what is saved, where, and how each command behaves
+- [Editing names and files](handbook/edit-mode.md) — aliases, file renames and LSP integration
+- [Lua API and troubleshooting](handbook/api.md)
 
-```vim
-:PileMoveBufferUp                " Move current buffer up in sidebar
-:PileMoveBufferDown              " Move current buffer down in sidebar
-:PileSort {key}                  " Sort buffers once by name / path / extension / filetype / recent
-:PileSort! {key}                 " Same, in reverse order
-```
+## 🤝 Contributing
 
-`:PileSort` saves the sorted result as the custom order, so you can keep adjusting it by hand
-afterwards. It requires `session.preserve_order = true`.
+Issues and pull requests are welcome. Commit messages and PR titles follow
+[Semantic Commit Messages](https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716)
+(`feat:`, `fix:`, `refactor:` ...); releases are generated by release-please. See
+[CHANGELOG.md](CHANGELOG.md) for the history.
 
-### Keybindings
+## 📄 License
 
-Set up convenient keybindings in your `init.lua`:
-
-```lua
--- Basic operations
-vim.api.nvim_set_keymap('n', '<leader>ps', ':PileToggle<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>pn', ':PileGoToNextBuffer<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>pp', ':PileGoToPrevBuffer<CR>', { noremap = true, silent = true })
-
--- Session management
-vim.api.nvim_set_keymap('n', '<leader>pss', ':PileSaveSession<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>psr', ':PileRestoreSession<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>psl', ':PileListSessions<CR>', { noremap = true, silent = true })
-
--- Buffer reordering
-vim.api.nvim_set_keymap('n', '<leader>pmu', ':PileMoveBufferUp<CR>', { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>pmd', ':PileMoveBufferDown<CR>', { noremap = true, silent = true })
-```
-
-### Sidebar Keybindings
-
-While in the sidebar:
-- `<CR>`: Open the selected buffer
-- `K`: Toggle a floating preview of the buffer under the cursor (follows the cursor)
-- `q` / `<Esc>`: Close sidebar
-
-**Buffer Operations (Vim-like):**
-- `dd`: Cut buffer (delete + save to register)
-- `yy`: Yank buffer (copy to register without deleting)
-- `p`: Paste buffers below cursor
-- `P`: Paste buffers above cursor
-- `D`: Delete buffer immediately (without saving to register)
-- `d` (visual mode): Cut multiple selected buffers
-- `y` (visual mode): Yank multiple selected buffers
-
-**Buffer Reordering:**
-- **Normal mode:**
-  - `<C-j>`: Move current buffer down
-  - `<C-k>`: Move current buffer up
-- **Visual mode:**
-  - `V` or `Shift+V`: Select line (start visual line mode)
-  - `j`/`k`: Extend selection
-  - `<C-j>`: Move selected buffers down
-  - `<C-k>`: Move selected buffers up
-
-**Note:** The register is automatically cleared when you leave the sidebar window.
-
-**Renaming (edit like a normal buffer, oil.nvim style):**
-- `a`: Edit display names. Change a line and `:w` to give that buffer an alias in the sidebar.
-  Empty the line (or restore the original name) to remove the alias. Aliases are stored per project.
-- `e`: Edit file paths (relative to the current directory). Change a line and `:w` to rename or move
-  the file on disk; missing parent directories are created. Language servers that support
-  `workspace/willRenameFiles` (e.g. TypeScript) update imports that point to the renamed file.
-- `q`: Discard the edits and leave the edit mode.
-
-While editing, the sidebar keymaps are disabled so `dd`, `p`, etc. behave as plain text editing.
-Adding or removing lines is not supported. Buffers with unsaved changes must be written before
-their file can be renamed.
-
-### How Sessions Work
-
-- **Auto-save**: When you exit Neovim, current buffers are saved to the "default" session
-- **Auto-restore**: On startup, buffers from the last session are automatically restored
-- **Named sessions**: Create multiple sessions for different projects or workflows
-- **Buffer order**: Your custom buffer order is preserved across sessions
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
-
-## License
-
-This project is licensed under the MIT License.
-
-
+[MIT](LICENSE)
