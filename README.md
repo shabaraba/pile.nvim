@@ -22,6 +22,7 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 - ✅ Smart duplicate filename resolution
 - ✅ Visual window indicators
 - ✅ File icons (mini.icons / nvim-web-devicons)
+- ✅ Unsaved-change and git status marks
 - 🚧 Editable buffer names within the sidebar for quick renaming (not implemented yet)
 - 🚧 Automatically updates file names when a buffer is renamed (not implemented yet)
 - 🚧 LSP integration: Automatically updates import paths when a file is renamed (not implemented yet)
@@ -91,6 +92,12 @@ require('pile').setup({
   -- File icons (uses mini.icons if set up, otherwise nvim-web-devicons)
   icons = {
     enabled = true,
+  },
+
+  -- Right-aligned status marks
+  marks = {
+    modified = true,          -- ● for buffers with unsaved changes
+    git = true,               -- git status letter (M, A, D, R, ? ...)
   },
 
   -- Window picker (passed through to nvim-window-picker)

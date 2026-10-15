@@ -3,6 +3,7 @@ local buffers = require 'pile.buffers'
 local log = require 'pile.log'
 local render = require 'pile.windows.sidebar.render'
 local keymaps = require 'pile.windows.sidebar.keymaps'
+local status_watch = require 'pile.windows.sidebar.status_watch'
 
 local uv = vim.uv or vim.loop
 
@@ -55,6 +56,7 @@ function M.open()
   })
 
   M._is_opening = false
+  status_watch.refresh_git()
 end
 
 function M.is_opened()
@@ -91,6 +93,7 @@ function M.resume()
   M._suspended = false
   pending_delay = nil
   M.update()
+  status_watch.refresh_git()
 end
 
 --- Request an update, coalescing bursts of events into a single redraw
@@ -143,6 +146,8 @@ vim.api.nvim_create_autocmd({"BufAdd", "BufLeave", "BufEnter"}, {
     end
   end
 })
+
+status_watch.setup(M)
 
 vim.api.nvim_create_autocmd("FileType", {
   pattern = "*",
