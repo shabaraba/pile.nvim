@@ -23,6 +23,7 @@ lua/pile/
 ├── config.lua         # Configuration management with defaults
 ├── globals.lua        # Shared state (sidebar_buf, sidebar_win)
 ├── log.lua            # Leveled logging (error/warn/info/debug/trace)
+├── icons.lua          # File icon lookup (mini.icons / nvim-web-devicons)
 ├── buffers/
 │   └── init.lua       # Buffer list management, duplicate path handling, navigation
 ├── windows/

@@ -1,8 +1,9 @@
 local globals = require 'pile.globals'
 local window_colors = require 'pile.window_colors'
 local config = require 'pile.config'
+local icons = require 'pile.icons'
 
-local ns_id = vim.api.nvim_create_namespace('pile_window_indicators')
+local ns_id = vim.api.nvim_create_namespace('pile_line_prefixes')
 
 local M = {}
 
@@ -38,22 +39,44 @@ local function build_indicator_virt_text(window_ids)
   return virt_text
 end
 
-local function apply_window_indicators(buffer_list)
-  if not config.window_indicator or not config.window_indicator.enabled then
-    return
+local function window_indicators_enabled()
+  return config.window_indicator.enabled
+end
+
+local function build_prefix_virt_text(buffer)
+  local virt_text = {}
+
+  if window_indicators_enabled() then
+    virt_text = build_indicator_virt_text(buffer.window_ids or {})
+    if #virt_text > 0 then
+      table.insert(virt_text, {" ", "Normal"})
+    end
   end
 
+  if config.icons.enabled then
+    local icon, hl = icons.get(buffer.name)
+    if icon then
+      table.insert(virt_text, {icon, hl})
+      table.insert(virt_text, {" ", "Normal"})
+    end
+  end
+
+  return virt_text
+end
+
+local function apply_line_prefixes(buffer_list)
   vim.api.nvim_buf_clear_namespace(globals.sidebar_buf, ns_id, 0, -1)
 
-  window_colors.cleanup()
-  if vim.tbl_isempty(window_colors.get_all_mappings()) then
-    window_colors.reset()
+  if window_indicators_enabled() then
+    window_colors.cleanup()
+    if vim.tbl_isempty(window_colors.get_all_mappings()) then
+      window_colors.reset()
+    end
   end
 
   for i, buffer in ipairs(buffer_list) do
-    local virt_text = build_indicator_virt_text(buffer.window_ids or {})
+    local virt_text = build_prefix_virt_text(buffer)
     if #virt_text > 0 then
-      table.insert(virt_text, {" ", "Normal"})
       vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, i - 1, 0, {
         virt_text = virt_text,
         virt_text_pos = "inline",
@@ -72,7 +95,7 @@ function M.draw(buffer_list, current_buf)
   vim.bo[globals.sidebar_buf].modifiable = false
 
   highlight_current_buffer(buffer_list, current_buf)
-  apply_window_indicators(buffer_list)
+  apply_line_prefixes(buffer_list)
 end
 
 return M
