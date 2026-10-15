@@ -81,7 +81,17 @@ function M.apply_to_window(window_id)
   local hl_group = string.format("PileCursorLineNr_%d", window_id)
   create_highlight_group(hl_group, color, { bold = true })
 
-  vim.wo[window_id].winhighlight = string.format('CursorLineNr:%s', hl_group)
+  local kept = {}
+  for entry in vim.wo[window_id].winhighlight:gmatch("[^,]+") do
+    if not entry:match("^CursorLineNr:") then
+      table.insert(kept, entry)
+    end
+  end
+  table.insert(kept, string.format('CursorLineNr:%s', hl_group))
+  local value = table.concat(kept, ",")
+  if vim.wo[window_id].winhighlight ~= value then
+    vim.wo[window_id].winhighlight = value
+  end
 end
 
 function M.apply_all_windows()
