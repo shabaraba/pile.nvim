@@ -1,0 +1,283 @@
+*pile.txt*  A vertical buffer sidebar, stacked like a pile of books
+
+Author:  shabaraba
+License: MIT
+Requires: Neovim 0.10+, s1n7ax/nvim-window-picker
+
+==============================================================================
+CONTENTS                                                       *pile-contents*
+
+  1. Introduction ............................................ |pile-intro|
+  2. Setup ................................................... |pile-setup|
+  3. Configuration ........................................... |pile-config|
+  4. Commands ................................................ |pile-commands|
+  5. Sidebar ................................................. |pile-sidebar|
+  6. Sessions ................................................ |pile-sessions|
+  7. Editing names and files ................................. |pile-edit|
+  8. Highlights ............................................ |pile-highlights|
+  9. Lua API ................................................. |pile-api|
+ 10. Health check ............................................ |pile-health|
+
+==============================================================================
+1. INTRODUCTION                                                   *pile-intro*
+
+pile.nvim shows your buffers in a sidebar that you edit like a normal buffer:
+reorder them with `dd` / `p`, give them display names, or rename the files on
+disk with `:w`. The order you choose is remembered per project.
+
+The handbook/ directory of the repository has the same content with more
+examples.
+
+==============================================================================
+2. SETUP                                                          *pile-setup*
+
+pile.nvim works without calling setup(). It initializes itself once Neovim
+has started, using |g:pile| or the defaults. Choose one way to configure it:
+
+                                                                      *g:pile*
+Set `vim.g.pile` before the plugin initializes: >lua
+    vim.g.pile = {
+      marks = { git = false },
+    }
+<
+                                                                *pile.setup()*
+Or call setup(). Options are merged over |g:pile|. Calling it again replaces
+the configuration: >lua
+    require("pile").setup({
+      marks = { git = false },
+    })
+<
+pile.nvim defines no global keymaps. Example: >lua
+    vim.keymap.set("n", "<leader>pp", "<cmd>PileToggle<cr>")
+    vim.keymap.set("n", "]b", "<cmd>PileGoToNextBuffer<cr>")
+    vim.keymap.set("n", "[b", "<cmd>PileGoToPrevBuffer<cr>")
+<
+If you lazy-load the plugin, the session is restored when it loads (see
+|pile-sessions|). Load it at startup if you use `session.auto_restore`.
+
+==============================================================================
+3. CONFIGURATION                                                 *pile-config*
+
+Defaults: >lua
+    {
+      session = {
+        auto_save = true,
+        auto_restore = true,
+        preserve_order = true,
+      },
+      window_indicator = {
+        enabled = true,
+        colors = {
+          "#E06C75", "#98C379", "#E5C07B", "#61AFEF", "#C678DD",
+          "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
+        },
+      },
+      icons = { enabled = true },
+      marks = { modified = true, git = true },
+      preview = { auto_open = false, border = "rounded" },
+      rename = { confirm = true },
+      window_picker = {},
+      exclude = { filenames = {}, filetypes = {}, buftypes = {} },
+      include = { filenames = {}, filetypes = {}, buftypes = {} },
+      debug = { enabled = false, level = "info" },
+    }
+<
+                                                      *pile-config-session*
+session.auto_save       Save the buffer list and windows to the current
+                        session on |VimLeavePre|.
+session.auto_restore    Restore the current session shortly after
+                        initialization. Skipped when Neovim was started with
+                        file arguments.
+session.preserve_order  Show buffers in the stored order. When false, the
+                        sidebar uses buffer-number order and reordering and
+                        |:PileSort| are disabled.
+
+                                             *pile-config-window_indicator*
+window_indicator.enabled  Prefix each line with one "█" per window that
+                          shows the buffer. The window's CursorLineNr is
+                          tinted with the same color.
+window_indicator.colors   Colors assigned to windows in turn.
+
+                                                        *pile-config-icons*
+icons.enabled           Show a file icon. Uses mini.icons when it has been
+                        set up, otherwise nvim-web-devicons.
+
+                                                        *pile-config-marks*
+marks.modified          Show "●" while the buffer has unsaved changes.
+marks.git               Show the git status letter (M, A, D, R, ? ...). Git
+                        status is refreshed while the sidebar is open.
+
+                                                      *pile-config-preview*
+preview.auto_open       Open the preview whenever the sidebar is entered.
+preview.border          Border of the preview; see |nvim_open_win()|.
+
+                                                       *pile-config-rename*
+rename.confirm          Ask before renaming files with `e`.
+
+                                                *pile-config-window_picker*
+window_picker           Options passed to nvim-window-picker's
+                        `pick_window()`, overriding its global setup for pile
+                        only. `filter_func` is always replaced by pile.
+
+                                                       *pile-config-filter*
+exclude, include        Each has `filenames` (Lua patterns against the full
+                        buffer name), `filetypes` and `buftypes`. A buffer
+                        matches when any field matches.
+
+The sidebar lists the buffers that |:ls| shows. Unlisted buffers are shown
+only when they are loaded and match `include`. Buffers without a name,
+"nofile" / "popup" buffers, "notify" windows, oil.nvim buffers and buffers
+matching `exclude` are hidden; `exclude` wins over `include`. >lua
+    exclude = { buftypes = { "terminal" } },
+    include = { filetypes = { "toggleterm" } },
+<
+                                                        *pile-config-debug*
+debug.enabled           Send pile's log to |vim.notify()|.
+debug.level             "error", "warn", "info", "debug" or "trace".
+
+==============================================================================
+4. COMMANDS                                                    *pile-commands*
+
+                                                                 *:PileToggle*
+:PileToggle             Open or close the sidebar.
+
+                                                         *:PileGoToNextBuffer*
+                                                         *:PileGoToPrevBuffer*
+:PileGoToNextBuffer
+:PileGoToPrevBuffer     Go to the next / previous buffer in sidebar order,
+                        wrapping around.
+
+                                                           *:PileMoveBufferUp*
+                                                         *:PileMoveBufferDown*
+:PileMoveBufferUp
+:PileMoveBufferDown     Move the current buffer one position in the sidebar.
+
+                                                                   *:PileSort*
+:PileSort[!] {key}      Sort once and store the result as the custom order.
+                        {key} is "name", "path", "extension", "filetype" or
+                        "recent" (most recently used first). [!] reverses.
+
+                                                            *:PileSaveSession*
+:PileSaveSession [name] Save the buffer list to the current session, or to
+                        [name]. Does not change the current session.
+
+                                                         *:PileRestoreSession*
+:PileRestoreSession [name]
+                        Restore the current session, or [name].
+
+                                                          *:PileCreateSession*
+:PileCreateSession {name}
+                        Save the buffer list as a new session. Fails if it
+                        exists. Does not switch to it.
+
+                                                          *:PileSwitchSession*
+:PileSwitchSession {name}
+                        Save the current session, make {name} current and
+                        restore it.
+
+                                                          *:PileDeleteSession*
+:PileDeleteSession {name}
+                        Delete a session. The current session and "default"
+                        cannot be deleted.
+
+                                                           *:PileListSessions*
+:PileListSessions       List sessions; "*" marks the current one.
+
+==============================================================================
+5. SIDEBAR                                                      *pile-sidebar*
+
+The sidebar is a 35-column split on the far left. Each line shows window
+markers, a file icon, the name (or alias) and, right-aligned, the git status
+and unsaved mark. Buffers that share a file name get the shortest
+distinguishing directory as prefix.
+
+                                                       *pile-sidebar-keymaps*
+<CR>        Open the buffer. With several candidate windows,
+            nvim-window-picker asks which one; with none, a split is made.
+K           Toggle a floating preview that follows the cursor. Buffers not
+            loaded yet are previewed without firing |BufRead|.
+dd    {x}d  Cut: wipe the buffer(s) and keep them in pile's register. Asks
+            to save unsaved changes first.
+yy    {x}y  Yank the buffer(s) into pile's register.
+p     P     Put the register below / above the cursor.
+D           Wipe the buffer immediately. Unsaved changes are lost.
+<C-j> <C-k> Move the buffer (or visual selection) down / up.
+a           Edit display names. See |pile-edit|.
+e           Edit file paths. See |pile-edit|.
+
+pile's register holds buffers, not text, and is cleared when you leave the
+sidebar window. Every change of order is saved to the current session at
+once; buffers without a stored position are appended at the bottom.
+
+==============================================================================
+6. SESSIONS                                                    *pile-sessions*
+
+A session is a named list of files, their order and the file shown in each
+window. It is not a |:mksession|.
+
+Sessions are stored per project (the git root of the current directory) in
+`stdpath("data")/pile/sessions-<project>.json`, or in
+`sessions-global.json` outside a repository. Aliases are stored in the same
+file and shared by all sessions of the project.
+
+Saved: every loaded or listed buffer with a file name and an empty
+'buftype'. |pile-config-filter| does not apply.
+
+Restore closes unnamed "nofile" buffers, adds each saved file that still
+exists to the buffer list without loading it, then recreates the saved
+windows as vertical splits (after |:only|). Buffers already open stay open.
+
+==============================================================================
+7. EDITING NAMES AND FILES                                         *pile-edit*
+
+`a` and `e` turn the sidebar into an editable buffer. Change lines and |:w|
+to apply, or press `q` to discard. Do not add, delete or reorder lines.
+
+Display names (`a`): the edited text becomes an alias shown in the sidebar.
+Empty the line, or restore the original name, to remove it.
+
+File paths (`e`): lines are paths relative to the current directory. Editing
+one renames or moves the file; missing directories are created. Nothing is
+renamed when a line is empty, two buffers would get the same path, the
+target exists, or the buffer has unsaved changes. With `rename.confirm` you
+are asked first.
+
+Language servers that support `workspace/willRenameFiles` receive the
+renames first (3 second timeout) and their edits, such as updated imports,
+are applied; the edited buffers are not written. `workspace/didRenameFiles`
+is sent afterwards.
+
+==============================================================================
+8. HIGHLIGHTS                                                *pile-highlights*
+
+SidebarCurrentBuffer    Current buffer line. Set by setup(); override it
+                        afterwards.
+PileAlias               Buffers with a display name.     Links to |hl-Special|
+PileModified            "●" mark.                     Links to |hl-WarningMsg|
+PileGitModified         M, R and other git letters.   Links to |hl-Changed|
+PileGitAdded            A                                Links to |hl-Added|
+PileGitDeleted          D                              Links to |hl-Removed|
+PileGitUntracked        ?                              Links to |hl-Comment|
+
+==============================================================================
+9. LUA API                                                          *pile-api*
+
+>lua
+    local pile = require("pile")
+    pile.setup(opts)
+    pile.toggle_sidebar()
+    pile.switch_to_next_buffer()
+    pile.switch_to_prev_buffer()
+    pile.move_buffer_up()
+    pile.move_buffer_down()
+<
+Other modules under `pile.` are internal.
+
+==============================================================================
+10. HEALTH CHECK                                                 *pile-health*
+
+`:checkhealth pile` reports the Neovim version, nvim-window-picker, the icon
+provider, git, invalid options (such as malformed `filenames` patterns) and
+whether the session directory is writable.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
