@@ -44,8 +44,8 @@ Restoring **adds** buffers; buffers you already have open stay open.
 ## Automatic save and restore
 
 - `session.auto_save` saves to the current session on `VimLeavePre`.
-- `session.auto_restore` restores the current session 100 ms after `setup()`, unless Neovim was
-  started with file arguments.
+- `session.auto_restore` restores the current session 100 ms after pile initializes (once per
+  Neovim instance), unless Neovim was started with file arguments.
 
 ## Commands
 

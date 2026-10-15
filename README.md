@@ -40,7 +40,8 @@ pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: re
 
 ## 📦 Installation
 
-`setup()` must be called — it registers the commands and autocommands.
+pile.nvim works without calling `setup()`; call it (or set `vim.g.pile`) only to change options.
+Run `:checkhealth pile` after installing.
 
 <details open>
 <summary><a href="https://github.com/folke/lazy.nvim">lazy.nvim</a></summary>
@@ -54,8 +55,8 @@ pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: re
 }
 ```
 
-Load it eagerly (as above) if you use `session.auto_restore`: the session is restored when
-`setup()` runs, so lazy-loading on `keys` or `cmd` would restore it — and reset your window
+Load it eagerly (as above) if you use `session.auto_restore`: the session is restored when the
+plugin initializes, so lazy-loading on `keys` or `cmd` would restore it — and reset your window
 layout — the first time you press the key.
 
 </details>
@@ -81,9 +82,6 @@ use {
 ```vim
 Plug 's1n7ax/nvim-window-picker'
 Plug 'shabaraba/pile.nvim'
-
-" after plug#end()
-lua require('pile').setup()
 ```
 
 </details>
@@ -104,7 +102,8 @@ that order.
 
 ## ⚙️ Configuration
 
-Every option is optional. These are the defaults:
+Pass options to `setup()`, or set `vim.g.pile` before startup finishes — `setup()` merges its
+options over `vim.g.pile`. Every option is optional. These are the defaults:
 
 <details>
 <summary>Default options</summary>
@@ -218,11 +217,15 @@ sidebar window.
 | `PileGitUntracked` | links to `Comment` | `?` |
 
 The `Pile*` groups are defined with `default = true`, so your colorscheme or config can override
-them. `SidebarCurrentBuffer` is set unconditionally by `setup()`; override it after `setup()`.
+them. `SidebarCurrentBuffer` is set unconditionally when pile initializes; override it after
+`setup()`.
 
-## 📚 Handbook
+## 📚 Documentation
 
-Detailed behavior lives in [`handbook/`](handbook/):
+- `:help pile` — the reference, available inside Neovim
+- `:checkhealth pile` — checks dependencies, options and the session directory
+
+Detailed behavior with examples lives in [`handbook/`](handbook/):
 
 - [Configuration](handbook/configuration.md) — every option, buffer filtering, window picker
 - [Sidebar](handbook/sidebar.md) — layout, opening buffers, register, reordering, sorting, preview, marks

@@ -1,18 +1,35 @@
 # Configuration
 
-All options are passed to `require("pile").setup()`. Every key is optional; anything you leave
-out keeps its default. The full default table is in the [README](../README.md).
+Every key is optional; anything you leave out keeps its default. The full default table is in the
+[README](../README.md).
 
-`setup()` stops with an error notification when
-[nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) cannot be required. Nothing
-else is registered in that case.
+## How options are applied
+
+pile.nvim initializes itself once Neovim has started (`plugin/pile.lua`, on `VimEnter`), so
+`setup()` is optional. There are two ways to pass options:
+
+```lua
+-- 1. A global, read when pile initializes
+vim.g.pile = { marks = { git = false } }
+
+-- 2. setup(); its options are merged over vim.g.pile
+require("pile").setup({ marks = { git = false } })
+```
+
+- If you call `setup()` before startup finishes (directly in `init.lua`, or through a plugin
+  manager's `opts` / `config`), the automatic initialization is skipped.
+- Calling `setup()` again replaces the configuration (it is merged over `vim.g.pile`, not over the
+  previous call) and does not register autocommands twice.
+- When [nvim-window-picker](https://github.com/s1n7ax/nvim-window-picker) cannot be required, a
+  warning is shown once and everything except choosing among several windows keeps working.
+- `:checkhealth pile` reports invalid option types and malformed `filenames` patterns.
 
 ## `session`
 
 | Key | Default | Description |
 | --- | --- | --- |
 | `auto_save` | `true` | On `VimLeavePre`, save the buffer list and windows to the **current** session |
-| `auto_restore` | `true` | Shortly after `setup()` (100 ms), restore the current session. Skipped when Neovim was started with file arguments (`nvim foo.lua`) |
+| `auto_restore` | `true` | Shortly after initialization (100 ms), restore the current session. Skipped when Neovim was started with file arguments (`nvim foo.lua`) |
 | `preserve_order` | `true` | Show buffers in the order stored in the current session. When `false`, the sidebar uses buffer-number order, reordering keys have no visible effect and `:PileSort` refuses to run |
 
 See [sessions.md](sessions.md) for what a session contains.

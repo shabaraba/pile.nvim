@@ -9,7 +9,9 @@ quick overview.
 | [sidebar.md](sidebar.md) | Layout, opening buffers, the register (`dd` / `yy` / `p`), reordering, `:PileSort`, navigation, preview, status marks |
 | [sessions.md](sessions.md) | What a session stores, where, how restore works, every session command |
 | [edit-mode.md](edit-mode.md) | Display names (`a`), file renames (`e`) and the LSP rename flow |
-| [api.md](api.md) | Lua functions and troubleshooting |
+| [api.md](api.md) | Lua functions, health check and troubleshooting |
+
+Inside Neovim, `:help pile` (`doc/pile.txt`) has the same reference in condensed form.
 
 These pages describe the behavior of the code on the default branch. When you change behavior,
-update the matching page in the same pull request.
+update the matching page and `doc/pile.txt` in the same pull request.
