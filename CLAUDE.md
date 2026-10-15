@@ -35,6 +35,7 @@ lua/pile/
 │   │   ├── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
 │   │   ├── marks.lua    # Right-aligned unsaved/git status marks
 │   │   └── status_watch.lua # Autocmds that refresh modified/git state
+│   ├── preview.lua    # Floating preview that follows the sidebar cursor
 │   └── popup.lua      # Window selection popup using nui.nvim
 └── repositories/
     └── sqlite.lua     # (placeholder/empty)

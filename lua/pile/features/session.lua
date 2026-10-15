@@ -2,6 +2,7 @@
 --- Handles saving and restoring buffer lists and window layouts
 local session_store = require('pile.storage.session_store')
 local log = require('pile.log')
+local windows = require('pile.windows')
 
 local M = {}
 
@@ -30,14 +31,6 @@ local function collect_saveable_buffers()
   return buffers
 end
 
---- Check if a window is a normal window (not floating)
---- @param win number Window handle
---- @return boolean True if window is normal
-local function is_normal_window(win)
-  local config = vim.api.nvim_win_get_config(win)
-  return not config.relative or config.relative == ''
-end
-
 --- Collect window layout information for all tabs
 --- NOTE: Currently stores buffer list per window. Full winlayout() tree restoration
 --- is not yet implemented to avoid complexity. Windows are restored as vertical splits.
@@ -46,7 +39,7 @@ local function collect_window_layout()
   local layout = {}
 
   for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if is_normal_window(win) then
+    if windows.is_normal_window(win) then
       local buf = vim.api.nvim_win_get_buf(win)
       if is_saveable_buffer(buf) then
         table.insert(layout, {

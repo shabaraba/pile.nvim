@@ -2,6 +2,13 @@ local globals = require "pile.globals"
 
 local M = {}
 
+--- @param win number Window handle
+--- @return boolean True if the window is a split, not a floating window
+function M.is_normal_window(win)
+  local relative = vim.api.nvim_win_get_config(win).relative
+  return not relative or relative == ''
+end
+
 function M.get_available_windows()
   local available_windows = {}
   for _, win in ipairs(vim.api.nvim_list_wins()) do
@@ -9,6 +16,7 @@ function M.get_available_windows()
     local buftype = vim.bo[buf].buftype
     local filetype = vim.bo[buf].filetype
     local is_available = win ~= globals.sidebar_win
+      and M.is_normal_window(win)
       and buftype ~= 'popup'
       and buftype ~= 'nofile'
       and filetype ~= 'notify'

@@ -100,6 +100,12 @@ require('pile').setup({
     git = true,               -- git status letter (M, A, D, R, ? ...)
   },
 
+  -- Floating preview (toggle with K in the sidebar)
+  preview = {
+    auto_open = false,        -- Show the preview whenever the sidebar is focused
+    border = "rounded",       -- Any value accepted by nvim_open_win()
+  },
+
   -- Window picker (passed through to nvim-window-picker)
   window_picker = {
     hint = "floating-big-letter",     -- "statusline-winbar" | "floating-big-letter"
@@ -211,6 +217,7 @@ vim.api.nvim_set_keymap('n', '<leader>pmd', ':PileMoveBufferDown<CR>', { noremap
 
 While in the sidebar:
 - `<CR>`: Open the selected buffer
+- `K`: Toggle a floating preview of the buffer under the cursor (follows the cursor)
 - `q` / `<Esc>`: Close sidebar
 
 **Buffer Operations (Vim-like):**
