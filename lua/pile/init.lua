@@ -30,6 +30,11 @@ local function setup_highlights()
     bg = "Red",
     fg = "White",
   })
+  vim.api.nvim_set_hl(0, "PileModified", { link = "WarningMsg", default = true })
+  vim.api.nvim_set_hl(0, "PileGitModified", { link = "Changed", default = true })
+  vim.api.nvim_set_hl(0, "PileGitAdded", { link = "Added", default = true })
+  vim.api.nvim_set_hl(0, "PileGitDeleted", { link = "Removed", default = true })
+  vim.api.nvim_set_hl(0, "PileGitUntracked", { link = "Comment", default = true })
 end
 
 local function setup_autocmds()

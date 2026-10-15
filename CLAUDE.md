@@ -24,6 +24,7 @@ lua/pile/
 ├── globals.lua        # Shared state (sidebar_buf, sidebar_win)
 ├── log.lua            # Leveled logging (error/warn/info/debug/trace)
 ├── icons.lua          # File icon lookup (mini.icons / nvim-web-devicons)
+├── git_status.lua     # Async `git status --porcelain` cache per repository
 ├── buffers/
 │   └── init.lua       # Buffer list management, duplicate path handling, navigation
 ├── windows/
@@ -31,7 +32,9 @@ lua/pile/
 │   ├── sidebar/
 │   │   ├── init.lua     # Sidebar lifecycle, debounced updates, autocmds
 │   │   ├── render.lua   # Lines, current-buffer highlight, window indicators
-│   │   └── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
+│   │   ├── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
+│   │   ├── marks.lua    # Right-aligned unsaved/git status marks
+│   │   └── status_watch.lua # Autocmds that refresh modified/git state
 │   └── popup.lua      # Window selection popup using nui.nvim
 └── repositories/
     └── sqlite.lua     # (placeholder/empty)

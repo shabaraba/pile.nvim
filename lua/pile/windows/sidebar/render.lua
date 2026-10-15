@@ -2,8 +2,9 @@ local globals = require 'pile.globals'
 local window_colors = require 'pile.window_colors'
 local config = require 'pile.config'
 local icons = require 'pile.icons'
+local marks = require 'pile.windows.sidebar.marks'
 
-local ns_id = vim.api.nvim_create_namespace('pile_line_prefixes')
+local ns_id = vim.api.nvim_create_namespace('pile_line_decorations')
 
 local M = {}
 
@@ -64,7 +65,17 @@ local function build_prefix_virt_text(buffer)
   return virt_text
 end
 
-local function apply_line_prefixes(buffer_list)
+local function set_virt_text(line, virt_text, pos)
+  if #virt_text > 0 then
+    vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, line, 0, {
+      virt_text = virt_text,
+      virt_text_pos = pos,
+      priority = 100,
+    })
+  end
+end
+
+local function apply_decorations(buffer_list)
   vim.api.nvim_buf_clear_namespace(globals.sidebar_buf, ns_id, 0, -1)
 
   if window_indicators_enabled() then
@@ -75,14 +86,8 @@ local function apply_line_prefixes(buffer_list)
   end
 
   for i, buffer in ipairs(buffer_list) do
-    local virt_text = build_prefix_virt_text(buffer)
-    if #virt_text > 0 then
-      vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, i - 1, 0, {
-        virt_text = virt_text,
-        virt_text_pos = "inline",
-        priority = 100,
-      })
-    end
+    set_virt_text(i - 1, build_prefix_virt_text(buffer), "inline")
+    set_virt_text(i - 1, marks.build(buffer), "right_align")
   end
 end
 
@@ -95,7 +100,7 @@ function M.draw(buffer_list, current_buf)
   vim.bo[globals.sidebar_buf].modifiable = false
 
   highlight_current_buffer(buffer_list, current_buf)
-  apply_line_prefixes(buffer_list)
+  apply_decorations(buffer_list)
 end
 
 return M
