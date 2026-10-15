@@ -27,7 +27,10 @@ lua/pile/
 │   └── init.lua       # Buffer list management, duplicate path handling, navigation
 ├── windows/
 │   ├── init.lua       # Window utilities (get_available_windows, set_buffer)
-│   ├── sidebar.lua    # Sidebar lifecycle, keymaps, autocmd updates
+│   ├── sidebar/
+│   │   ├── init.lua     # Sidebar lifecycle, debounced updates, autocmds
+│   │   ├── render.lua   # Lines, current-buffer highlight, window indicators
+│   │   └── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
 │   └── popup.lua      # Window selection popup using nui.nvim
 └── repositories/
     └── sqlite.lua     # (placeholder/empty)
@@ -37,7 +40,7 @@ lua/pile/
 
 - **Shared State**: `globals.lua` holds sidebar window/buffer references used across modules
 - **Duplicate File Handling**: `buffers/init.lua` implements smart path disambiguation when multiple files share the same name
-- **Auto-updates**: `sidebar.lua` registers autocmds (BufAdd, BufEnter, BufLeave, FileType) to keep the sidebar in sync
+- **Auto-updates**: `sidebar/init.lua` registers autocmds (BufAdd, BufEnter, BufLeave, FileType) to keep the sidebar in sync
 - **oil.nvim Integration**: Buffer filtering excludes oil.nvim temporary buffers
 
 ### User Commands
