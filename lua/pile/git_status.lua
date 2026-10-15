@@ -2,13 +2,19 @@ local log = require('pile.log')
 
 local M = {}
 
+-- statuses[root][absolute path] = status letter
 local statuses = {}
-local running = {}
-local rerun = {}
+-- jobs[root] = "running" | "rerun"
+local jobs = {}
+local root_by_dir = {}
 
 local function find_repo_root(path)
-  local git_dir = vim.fs.find('.git', { path = vim.fs.dirname(path), upward = true })[1]
-  return git_dir and vim.fs.dirname(git_dir) or nil
+  local dir = vim.fs.dirname(path)
+  if root_by_dir[dir] == nil then
+    local git_dir = vim.fs.find('.git', { path = dir, upward = true })[1]
+    root_by_dir[dir] = git_dir and vim.fs.dirname(git_dir) or false
+  end
+  return root_by_dir[dir] or nil
 end
 
 local function unquote(path)
@@ -39,35 +45,35 @@ local function parse_porcelain(root, lines)
   return result
 end
 
-local function refresh_root(root, on_done)
-  if running[root] then
-    rerun[root] = true
+local function refresh_root(root, on_change)
+  if jobs[root] then
+    jobs[root] = "rerun"
     return
   end
-  running[root] = true
+  jobs[root] = "running"
 
-  vim.fn.jobstart({ 'git', '-C', root, 'status', '--porcelain=v1', '--untracked-files=all' }, {
+  local output = {}
+  vim.fn.jobstart({ 'git', '--no-optional-locks', '-C', root, 'status', '--porcelain=v1', '--untracked-files=all' }, {
     stdout_buffered = true,
     on_stdout = function(_, data)
-      for path in pairs(statuses) do
-        if vim.startswith(path, root .. '/') then
-          statuses[path] = nil
-        end
-      end
-      for path, status in pairs(parse_porcelain(root, data or {})) do
-        statuses[path] = status
-      end
+      output = data or {}
     end,
     on_exit = function(_, code)
-      running[root] = nil
-      if code ~= 0 then
+      if code == 0 then
+        local result = parse_porcelain(root, output)
+        if not vim.deep_equal(statuses[root], result) then
+          statuses[root] = result
+          vim.schedule(on_change)
+        end
+      else
         log.debug('git status failed in ' .. root)
       end
-      vim.schedule(on_done)
+
       -- A change made while git was running may be missing from this result
-      if rerun[root] then
-        rerun[root] = nil
-        refresh_root(root, on_done)
+      local rerun = jobs[root] == "rerun"
+      jobs[root] = nil
+      if rerun then
+        refresh_root(root, on_change)
       end
     end,
   })
@@ -75,8 +81,8 @@ end
 
 --- Re-run `git status` for every repository that contains one of the paths
 --- @param paths string[] Absolute buffer paths
---- @param on_done function Called once per repository after its status is stored
-function M.refresh(paths, on_done)
+--- @param on_change function Called when a repository's status differs from the stored one
+function M.refresh(paths, on_change)
   local roots = {}
   for _, path in ipairs(paths) do
     if path ~= '' then
@@ -87,14 +93,16 @@ function M.refresh(paths, on_done)
     end
   end
   for root in pairs(roots) do
-    refresh_root(root, on_done)
+    refresh_root(root, on_change)
   end
 end
 
 --- @param path string Absolute buffer path
 --- @return string|nil status One of "M", "A", "D", "R", "?", ...
 function M.get(path)
-  return statuses[vim.fs.normalize(path)]
+  path = vim.fs.normalize(path)
+  local root = find_repo_root(path)
+  return root and statuses[root] and statuses[root][path]
 end
 
 return M

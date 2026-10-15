@@ -1,5 +1,4 @@
 local globals = require 'pile.globals'
-local buffers = require 'pile.buffers'
 local config = require 'pile.config'
 local git_status = require 'pile.git_status'
 
@@ -8,22 +7,28 @@ local M = {}
 local sidebar = nil
 local known_modified = {}
 
---- Re-read git status for the listed buffers and redraw when it arrives
+local function git_marks_active()
+  return sidebar and sidebar.is_opened() and not sidebar._suspended and config.marks.git
+end
+
+local function on_git_change()
+  sidebar.schedule_update()
+end
+
+--- Re-read git status for the listed buffers and redraw when it changes
 function M.refresh_git()
-  if not sidebar or not (config.marks and config.marks.git) or not sidebar.is_opened() or sidebar._suspended then
+  if not git_marks_active() then
     return
   end
 
   local paths = {}
-  for _, buffer in ipairs(buffers.get_list()) do
+  for _, buffer in ipairs(sidebar.get_buffer_list()) do
     table.insert(paths, buffer.name)
   end
-  git_status.refresh(paths, function()
-    sidebar.schedule_update()
-  end)
+  git_status.refresh(paths, on_git_change)
 end
 
---- @param sidebar_module table Sidebar module providing is_opened() and schedule_update()
+--- @param sidebar_module table Sidebar module providing is_opened(), get_buffer_list() and schedule_update()
 function M.setup(sidebar_module)
   sidebar = sidebar_module
 
@@ -32,7 +37,8 @@ function M.setup(sidebar_module)
   vim.api.nvim_create_autocmd({"TextChanged", "TextChangedI", "TextChangedP", "BufWritePost", "BufReadPost"}, {
     pattern = "*",
     callback = function(ev)
-      if ev.buf == globals.sidebar_buf or not vim.api.nvim_buf_is_valid(ev.buf) then
+      -- config.marks is unset until setup() succeeds
+      if not (config.marks and config.marks.modified) or ev.buf == globals.sidebar_buf or not vim.api.nvim_buf_is_valid(ev.buf) then
         return
       end
       local modified = vim.bo[ev.buf].modified
@@ -50,11 +56,18 @@ function M.setup(sidebar_module)
     end
   })
 
-  vim.api.nvim_create_autocmd({"BufReadPost", "BufWritePost", "FocusGained", "ShellCmdPost", "TermLeave"}, {
+  vim.api.nvim_create_autocmd({"BufReadPost", "BufWritePost"}, {
     pattern = "*",
-    callback = function()
-      M.refresh_git()
+    callback = function(ev)
+      if git_marks_active() then
+        git_status.refresh({ vim.api.nvim_buf_get_name(ev.buf) }, on_git_change)
+      end
     end,
+  })
+
+  vim.api.nvim_create_autocmd({"FocusGained", "ShellCmdPost", "TermLeave"}, {
+    pattern = "*",
+    callback = M.refresh_git,
   })
 end
 
