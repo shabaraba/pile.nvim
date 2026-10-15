@@ -19,10 +19,10 @@ local function exit_visual_mode()
 end
 
 local function restore_visual_selection(from_line, to_line)
-  vim.api.nvim_win_set_cursor(globals.sidebar_win, {to_line, 0})
-  vim.cmd('normal! V')
-  vim.api.nvim_win_set_cursor(globals.sidebar_win, {from_line, 0})
-  vim.cmd('normal! o')
+  vim.cmd('normal! \27')
+  vim.api.nvim_buf_set_mark(globals.sidebar_buf, '<', from_line, 0, {})
+  vim.api.nvim_buf_set_mark(globals.sidebar_buf, '>', to_line, 0, {})
+  vim.cmd('normal! gv')
 end
 
 local function set_keymap(mode, lhs, callback, desc)
