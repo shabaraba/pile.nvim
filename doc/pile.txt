@@ -212,8 +212,8 @@ once; buffers without a stored position are appended at the bottom.
 ==============================================================================
 6. SESSIONS                                                    *pile-sessions*
 
-A session is a named list of files, their order and the file shown in each
-window. It is not a |:mksession|.
+A session is a named list of files, their order, and the tabs and splits that
+show them. It is not a |:mksession|.
 
 Sessions are stored per project (the git root of the current directory) in
 `stdpath("data")/pile/sessions-<project>.json`, or in
@@ -224,8 +224,10 @@ Saved: every loaded or listed buffer with a file name and an empty
 'buftype'. |pile-config-filter| does not apply.
 
 Restore closes unnamed "nofile" buffers, adds each saved file that still
-exists to the buffer list without loading it, then recreates the saved
-windows as vertical splits (after |:only|). Buffers already open stay open.
+exists to the buffer list without loading it, then recreates the saved tabs
+and their horizontal/vertical splits (after |:tabonly| and |:only|), scaling
+the saved sizes to the current screen and focusing the previously active tab
+and window. Buffers already open stay open.
 
 ==============================================================================
 7. EDITING NAMES AND FILES                                         *pile-edit*
