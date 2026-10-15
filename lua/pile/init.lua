@@ -6,14 +6,15 @@ local session = require("pile.features.session")
 
 local M = {}
 
+local initialized = false
+local restore_scheduled = false
+
 local function check_dependencies()
   log.trace("Checking dependencies...")
-  local has_window_picker = pcall(require, "window-picker")
-  if not has_window_picker then
-    log.error("Required dependency nvim-window-picker not found. Please install it with your plugin manager.")
+  if not pcall(require, "window-picker") then
     vim.notify(
-      "pile.nvim requires s1n7ax/nvim-window-picker to be installed. Please add it to your plugin manager.",
-      vim.log.levels.ERROR
+      "pile.nvim: s1n7ax/nvim-window-picker is not installed; opening a buffer with several windows will fail. Run :checkhealth pile",
+      vim.log.levels.WARN
     )
     return false
   end
@@ -39,7 +40,11 @@ local function setup_highlights()
 end
 
 local function setup_autocmds()
+  -- Cleared on every call so that calling setup() again does not stack autocmds
+  local group = vim.api.nvim_create_augroup("Pile", { clear = true })
+
   vim.api.nvim_create_autocmd({"WinNew", "WinEnter", "BufEnter", "BufWinEnter"}, {
+    group = group,
     pattern = "*",
     callback = function()
       sidebar.schedule_update()
@@ -47,6 +52,7 @@ local function setup_autocmds()
   })
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
+    group = group,
     pattern = "*",
     callback = function()
       if config.session and config.session.auto_save then
@@ -56,67 +62,49 @@ local function setup_autocmds()
   })
 end
 
-local function setup_commands()
-  vim.api.nvim_create_user_command("PileToggle", M.toggle_sidebar, { desc = "toggle pile window" })
-  vim.api.nvim_create_user_command("PileGoToNextBuffer", M.switch_to_next_buffer, { desc = "go to next buffer" })
-  vim.api.nvim_create_user_command("PileGoToPrevBuffer", M.switch_to_prev_buffer, { desc = "go to prev buffer" })
-
-  vim.api.nvim_create_user_command("PileSaveSession", M.save_session, {
-    nargs = "?",
-    desc = "save current buffers to session"
-  })
-  vim.api.nvim_create_user_command("PileRestoreSession", M.restore_session, {
-    nargs = "?",
-    complete = function() return session.list_sessions() end,
-    desc = "restore session"
-  })
-  vim.api.nvim_create_user_command("PileCreateSession", M.create_session, {
-    nargs = 1,
-    desc = "create new session with name"
-  })
-  vim.api.nvim_create_user_command("PileSwitchSession", M.switch_session, {
-    nargs = 1,
-    complete = function() return session.list_sessions() end,
-    desc = "switch to session"
-  })
-  vim.api.nvim_create_user_command("PileDeleteSession", M.delete_session, {
-    nargs = 1,
-    complete = function() return session.list_sessions() end,
-    desc = "delete session"
-  })
-  vim.api.nvim_create_user_command("PileListSessions", M.list_sessions, {
-    desc = "list all sessions"
-  })
-
-  vim.api.nvim_create_user_command("PileMoveBufferUp", M.move_buffer_up, {
-    desc = "move current buffer up in sidebar"
-  })
-  vim.api.nvim_create_user_command("PileMoveBufferDown", M.move_buffer_down, {
-    desc = "move current buffer down in sidebar"
-  })
-  vim.api.nvim_create_user_command("PileSort", M.sort_buffers, {
-    nargs = 1,
-    bang = true,
-    complete = function() return require('pile.features.sort').KEYS end,
-    desc = "sort buffers in sidebar (! to reverse)"
-  })
-end
-
-function M.setup(opts)
-  if not check_dependencies() then
+--- Restore the session once per Neovim instance
+--- The option is read when the timer fires, so a setup() call that follows the
+--- automatic initialization (plugin/pile.lua) can still turn it off.
+local function schedule_auto_restore()
+  if restore_scheduled then
     return
   end
+  restore_scheduled = true
+
+  vim.defer_fn(function()
+    if config.session and config.session.auto_restore then
+      session.auto_restore()
+    end
+  end, 100)
+end
+
+--- Configure pile.nvim
+--- Optional: plugin/pile.lua initializes pile with `vim.g.pile` (or the defaults)
+--- when setup() has not been called. Calling it again replaces the configuration.
+--- @param opts table|nil Options, merged over `vim.g.pile`
+function M.setup(opts)
+  opts = vim.tbl_deep_extend("force", vim.g.pile or {}, opts or {})
+
+  if not initialized then
+    check_dependencies()
+  end
+  initialized = true
 
   config.setup(opts)
   setup_highlights()
   setup_autocmds()
-  setup_commands()
+  schedule_auto_restore()
+end
 
-  if config.session and config.session.auto_restore then
-    vim.defer_fn(function()
-      session.auto_restore()
-    end, 100)
+--- Initialize with `vim.g.pile` unless setup() already ran
+function M.ensure_initialized()
+  if not initialized then
+    M.setup()
   end
+end
+
+function M.is_initialized()
+  return initialized
 end
 
 function M.toggle_sidebar()
@@ -244,6 +232,16 @@ function M.sort_buffers(opts)
   reorder.save_buffer_order(sorted)
   sidebar.update()
   print("Sorted buffers by " .. opts.args .. (opts.bang and " (reversed)" or ""))
+end
+
+-- Public functions work without an explicit setup(): the first call initializes pile
+for name, fn in pairs(M) do
+  if name ~= "setup" and name ~= "ensure_initialized" and name ~= "is_initialized" then
+    M[name] = function(...)
+      M.ensure_initialized()
+      return fn(...)
+    end
+  end
 end
 
 return M
