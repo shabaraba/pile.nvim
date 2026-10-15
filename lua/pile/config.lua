@@ -64,6 +64,10 @@ M.setup = function(opts)
     border = set_default("preview.border", "rounded"),
   }
 
+  M.rename = {
+    confirm = set_default("rename.confirm", true),
+  }
+
   M.window_picker = set_default("window_picker", {})
 
   for _, rule in ipairs({ "exclude", "include" }) do
