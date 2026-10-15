@@ -50,6 +50,10 @@ M.setup = function(opts)
     }),
   }
 
+  M.icons = {
+    enabled = set_default("icons.enabled", true),
+  }
+
   M.window_picker = set_default("window_picker", {})
 
   for _, rule in ipairs({ "exclude", "include" }) do
