@@ -1,15 +1,15 @@
 local M = {}
 
 local provider = nil
+-- A path's icon never changes within a session, and lookups run on every redraw
+local cache = {}
 
 local function mini_icons_provider()
-  local ok, mini_icons = pcall(require, 'mini.icons')
-  if not ok or not _G.MiniIcons then
+  if not _G.MiniIcons then
     return nil
   end
   return function(path)
-    local icon, hl = mini_icons.get('file', path)
-    return icon, hl
+    return _G.MiniIcons.get('file', path)
   end
 end
 
@@ -19,17 +19,9 @@ local function devicons_provider()
     return nil
   end
   return function(path)
-    local filename = vim.fn.fnamemodify(path, ':t')
-    local extension = vim.fn.fnamemodify(path, ':e')
-    return devicons.get_icon(filename, extension, { default = true })
+    -- devicons derives the extension itself, including multi-dot ones like .d.ts
+    return devicons.get_icon(vim.fs.basename(path), nil, { default = true })
   end
-end
-
-local function resolve_provider()
-  if provider == nil then
-    provider = mini_icons_provider() or devicons_provider() or false
-  end
-  return provider
 end
 
 --- Look up the file icon for a buffer path
@@ -38,11 +30,18 @@ end
 --- @return string|nil icon
 --- @return string|nil hl_group
 function M.get(path)
-  local get_icon = resolve_provider()
-  if not get_icon then
+  if provider == nil then
+    provider = mini_icons_provider() or devicons_provider() or false
+  end
+  if not provider then
     return nil, nil
   end
-  return get_icon(path)
+
+  if not cache[path] then
+    local icon, hl = provider(path)
+    cache[path] = { icon, hl }
+  end
+  return cache[path][1], cache[path][2]
 end
 
 return M

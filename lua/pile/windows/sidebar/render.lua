@@ -40,7 +40,7 @@ local function build_indicator_virt_text(window_ids)
 end
 
 local function window_indicators_enabled()
-  return config.window_indicator and config.window_indicator.enabled
+  return config.window_indicator.enabled
 end
 
 local function build_prefix_virt_text(buffer)
@@ -53,10 +53,11 @@ local function build_prefix_virt_text(buffer)
     end
   end
 
-  if config.icons and config.icons.enabled then
+  if config.icons.enabled then
     local icon, hl = icons.get(buffer.name)
     if icon then
-      table.insert(virt_text, {icon .. " ", hl or "Normal"})
+      table.insert(virt_text, {icon, hl})
+      table.insert(virt_text, {" ", "Normal"})
     end
   end
 
