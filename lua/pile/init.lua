@@ -197,10 +197,7 @@ local function move_buffer(direction)
 
   for i, buf in ipairs(buffer_list) do
     if buf.buf == current_buf then
-      local target = direction == "up" and i - 1 or i + 1
-      if target >= 1 and target <= #buffer_list then
-        local reordered = reorder.move_buffer(i, target, buffer_list)
-        reorder.save_buffer_order(reordered)
+      if reorder.shift(buffer_list, i, direction == "up" and -1 or 1) then
         sidebar.update()
         print("Buffer moved " .. direction)
         return

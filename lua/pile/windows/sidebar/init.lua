@@ -112,9 +112,6 @@ function M.schedule_update(delay)
   end
   update_timer:stop()
   update_timer:start(delay, 0, vim.schedule_wrap(function()
-    if update_timer then
-      update_timer:stop()
-    end
     pending_delay = nil
     M.update()
   end))
@@ -132,7 +129,7 @@ function M.update()
   buffer_list = buffers.get_list()
   render.draw(buffer_list, vim.api.nvim_get_current_buf())
 
-  if globals.sidebar_win and vim.api.nvim_win_is_valid(globals.sidebar_win) then
+  if M.is_opened() then
     vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
   end
 end

@@ -14,16 +14,6 @@ local function get_visual_range()
   return math.min(start_line, end_line), math.max(start_line, end_line)
 end
 
-local function get_buffers_in_range(buffer_list, from_line, to_line)
-  local selected = {}
-  for line = from_line, to_line do
-    if buffer_list[line] then
-      table.insert(selected, buffer_list[line])
-    end
-  end
-  return selected
-end
-
 local function exit_visual_mode()
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 end
@@ -38,7 +28,6 @@ end
 local function set_keymap(mode, lhs, callback, desc)
   vim.keymap.set(mode, lhs, callback, {
     buffer = globals.sidebar_buf,
-    noremap = true,
     silent = true,
     desc = desc
   })
@@ -52,7 +41,7 @@ function M.setup(sidebar)
 
   local function selected_buffers()
     local from_line, to_line = get_visual_range()
-    return get_buffers_in_range(sidebar.get_buffer_list(), from_line, to_line)
+    return vim.list_slice(sidebar.get_buffer_list(), from_line, to_line)
   end
 
   local function paste(offset)
@@ -70,15 +59,10 @@ function M.setup(sidebar)
 
   local function move_line(step)
     local current_line = get_current_line()
-    local buffer_list = sidebar.get_buffer_list()
-    local target_line = current_line + step
-    if target_line < 1 or target_line > #buffer_list then
-      return
+    if reorder.shift(sidebar.get_buffer_list(), current_line, step) then
+      sidebar.update()
+      vim.api.nvim_win_set_cursor(globals.sidebar_win, {current_line + step, 0})
     end
-
-    reorder.save_buffer_order(reorder.move_buffer(current_line, target_line, buffer_list))
-    sidebar.update()
-    vim.api.nvim_win_set_cursor(globals.sidebar_win, {target_line, 0})
   end
 
   local function move_selection(direction)

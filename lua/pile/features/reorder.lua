@@ -126,6 +126,17 @@ function M.move_range(from_line, to_line, direction, buffer_list)
   return reordered
 end
 
+--- Move one buffer up or down by `step` and persist the new order
+--- @return boolean moved false when the move would leave the list
+function M.shift(buffer_list, index, step)
+  local target = index + step
+  if not is_valid_index(index, #buffer_list) or not is_valid_index(target, #buffer_list) then
+    return false
+  end
+  M.save_buffer_order(M.move_buffer(index, target, buffer_list))
+  return true
+end
+
 function M.save_buffer_order(buffer_list)
   local session_name = session_store.get_current_session_name()
   local buffers = {}

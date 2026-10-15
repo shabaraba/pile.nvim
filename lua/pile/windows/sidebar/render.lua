@@ -22,22 +22,16 @@ local function highlight_current_buffer(buffer_list, target_buffer)
   end
 end
 
-local function is_sidebar_window(window_id, win_buf)
-  return window_id == globals.sidebar_win or win_buf == globals.sidebar_buf
-end
-
+--- @param window_ids number[] Windows showing the buffer; buffers.get_list() already leaves out the sidebar
 local function build_indicator_virt_text(window_ids)
   local virt_text = {}
 
   for _, window_id in ipairs(window_ids) do
-    local win_buf = vim.api.nvim_win_get_buf(window_id)
-    if not is_sidebar_window(window_id, win_buf) then
-      local color = window_colors.assign_color(window_id, config.window_indicator.colors)
-      if color then
-        window_colors.apply_to_window(window_id)
-        local hl_group = string.format("PileWindowIndicator_%d", window_id)
-        table.insert(virt_text, {"\226\150\136", hl_group})
-      end
+    local color = window_colors.assign_color(window_id, config.window_indicator.colors)
+    if color then
+      window_colors.apply_to_window(window_id)
+      local hl_group = string.format("PileWindowIndicator_%d", window_id)
+      table.insert(virt_text, {"\226\150\136", hl_group})
     end
   end
 
@@ -57,17 +51,14 @@ local function apply_window_indicators(buffer_list)
   end
 
   for i, buffer in ipairs(buffer_list) do
-    if buffer.window_ids and #buffer.window_ids > 0 then
-      local virt_text = build_indicator_virt_text(buffer.window_ids)
-
-      if #virt_text > 0 then
-        table.insert(virt_text, {" ", "Normal"})
-        vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, i - 1, 0, {
-          virt_text = virt_text,
-          virt_text_pos = "inline",
-          priority = 100,
-        })
-      end
+    local virt_text = build_indicator_virt_text(buffer.window_ids or {})
+    if #virt_text > 0 then
+      table.insert(virt_text, {" ", "Normal"})
+      vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, i - 1, 0, {
+        virt_text = virt_text,
+        virt_text_pos = "inline",
+        priority = 100,
+      })
     end
   end
 end
