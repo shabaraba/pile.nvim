@@ -26,7 +26,10 @@ lua/pile/
 ├── icons.lua          # File icon lookup (mini.icons / nvim-web-devicons)
 ├── git_status.lua     # Async `git status --porcelain` cache per repository
 ├── buffers/
-│   └── init.lua       # Buffer list management, duplicate path handling, navigation
+│   ├── init.lua       # Buffer list management, aliases, navigation
+│   └── disambiguate.lua # Path prefixes for buffers sharing a file name
+├── features/
+│   └── file_rename.lua # Rename files on disk + LSP willRenameFiles/didRenameFiles
 ├── windows/
 │   ├── init.lua       # Window utilities (get_available_windows, set_buffer)
 │   ├── sidebar/
@@ -34,7 +37,8 @@ lua/pile/
 │   │   ├── render.lua   # Lines, current-buffer highlight, window indicators
 │   │   ├── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
 │   │   ├── marks.lua    # Right-aligned unsaved/git status marks
-│   │   └── status_watch.lua # Autocmds that refresh modified/git state
+│   │   ├── status_watch.lua # Autocmds that refresh modified/git state
+│   │   └── edit_mode.lua  # Editable sidebar for aliases (a) and file renames (e)
 │   ├── preview.lua    # Floating preview that follows the sidebar cursor
 │   └── popup.lua      # Window selection popup using nui.nvim
 └── repositories/

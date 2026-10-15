@@ -145,6 +145,42 @@ function M.delete_session(name)
   end)
 end
 
+--- Display aliases are shared by every session of the project
+--- @return table<string, string> path -> alias
+function M.get_aliases()
+  return get_store().read().aliases or {}
+end
+
+--- @param changes table<string, string|false> path -> new alias, or false to remove it
+function M.update_aliases(changes)
+  return get_store().update(function(data)
+    data.aliases = data.aliases or {}
+    for path, alias in pairs(changes) do
+      data.aliases[path] = alias or nil
+    end
+    return data
+  end)
+end
+
+--- Point stored aliases and session entries at the new paths of renamed files
+--- @param renamed table<string, string> old path -> new path
+function M.rename_paths(renamed)
+  return get_store().update(function(data)
+    local aliases = data.aliases or {}
+    for from, to in pairs(renamed) do
+      if aliases[from] then
+        aliases[to], aliases[from] = aliases[from], nil
+      end
+    end
+    for _, session in pairs(data.sessions or {}) do
+      for _, entry in ipairs(session.buffers or {}) do
+        entry.path = renamed[entry.path] or entry.path
+      end
+    end
+    return data
+  end)
+end
+
 function M.list_session_names()
   local names = vim.tbl_keys(M.get_all_sessions())
   table.sort(names)

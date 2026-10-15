@@ -36,6 +36,14 @@ end
 
 --- @param sidebar table Sidebar module providing get_buffer_list(), get_buffer_at_cursor() and update()
 function M.setup(sidebar)
+  set_keymap('n', 'a', function()
+    require('pile.windows.sidebar.edit_mode').enter(sidebar, 'alias')
+  end, "Edit display names")
+
+  set_keymap('n', 'e', function()
+    require('pile.windows.sidebar.edit_mode').enter(sidebar, 'file')
+  end, "Edit file paths")
+
   local buffer_at_cursor = sidebar.get_buffer_at_cursor
 
   local function selected_buffers()

@@ -11,13 +11,16 @@ local M = {}
 local function buffer_list_to_lines(buffer_list)
   local lines = {}
   for _, buffer in ipairs(buffer_list) do
-    table.insert(lines, buffer.filename)
+    table.insert(lines, buffer.alias or buffer.filename)
   end
   return lines
 end
 
-local function highlight_current_buffer(buffer_list, target_buffer)
+local function highlight_lines(buffer_list, target_buffer)
   for i, buffer in ipairs(buffer_list) do
+    if buffer.alias then
+      vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "PileAlias", i - 1, 0, -1)
+    end
     if buffer.buf == target_buffer then
       vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
     end
@@ -99,7 +102,7 @@ function M.draw(buffer_list, current_buf)
   vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, buffer_list_to_lines(buffer_list))
   vim.bo[globals.sidebar_buf].modifiable = false
 
-  highlight_current_buffer(buffer_list, current_buf)
+  highlight_lines(buffer_list, current_buf)
   apply_decorations(buffer_list)
 end
 

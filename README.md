@@ -23,9 +23,9 @@ pile.nvim is a Neovim plugin that provides a vertical buffer sidebar, similar to
 - ✅ Visual window indicators
 - ✅ File icons (mini.icons / nvim-web-devicons)
 - ✅ Unsaved-change and git status marks
-- 🚧 Editable buffer names within the sidebar for quick renaming (not implemented yet)
-- 🚧 Automatically updates file names when a buffer is renamed (not implemented yet)
-- 🚧 LSP integration: Automatically updates import paths when a file is renamed (not implemented yet)
+- ✅ Edit display names (aliases) directly in the sidebar
+- ✅ Rename / move files by editing their paths in the sidebar
+- ✅ LSP integration: Automatically updates import paths when a file is renamed
 
 ## Requirements
 
@@ -104,6 +104,11 @@ require('pile').setup({
   preview = {
     auto_open = false,        -- Show the preview whenever the sidebar is focused
     border = "rounded",       -- Any value accepted by nvim_open_win()
+  },
+
+  -- File renaming from the sidebar (e)
+  rename = {
+    confirm = true,           -- Ask before renaming files on disk
   },
 
   -- Window picker (passed through to nvim-window-picker)
@@ -240,6 +245,18 @@ While in the sidebar:
   - `<C-k>`: Move selected buffers up
 
 **Note:** The register is automatically cleared when you leave the sidebar window.
+
+**Renaming (edit like a normal buffer, oil.nvim style):**
+- `a`: Edit display names. Change a line and `:w` to give that buffer an alias in the sidebar.
+  Empty the line (or restore the original name) to remove the alias. Aliases are stored per project.
+- `e`: Edit file paths (relative to the current directory). Change a line and `:w` to rename or move
+  the file on disk; missing parent directories are created. Language servers that support
+  `workspace/willRenameFiles` (e.g. TypeScript) update imports that point to the renamed file.
+- `q`: Discard the edits and leave the edit mode.
+
+While editing, the sidebar keymaps are disabled so `dd`, `p`, etc. behave as plain text editing.
+Adding or removing lines is not supported. Buffers with unsaved changes must be written before
+their file can be renamed.
 
 ### How Sessions Work
 
