@@ -5,12 +5,13 @@
 --- to restore them from a saved session.
 local M = {}
 
---- Capture the current tab's split tree
+--- Capture a tab's split tree
 --- Excluded windows are dropped and their parent frames collapsed, the same way
 --- Neovim would arrange the remaining windows.
 --- @param exclude fun(win: number): boolean|nil Windows to leave out
+--- @param tabpage number|nil Tabpage handle; defaults to the current tab
 --- @return table|nil Tree of {type='leaf', win, row, col, width, height} / {type='row'|'col', children}
-function M.capture(exclude)
+function M.capture(exclude, tabpage)
   local function build(node)
     local kind, data = node[1], node[2]
     if kind == 'leaf' then
@@ -38,7 +39,9 @@ function M.capture(exclude)
     return M.normalize({ type = kind, children = children })
   end
 
-  return build(vim.fn.winlayout())
+  -- winlayout(nil) is not winlayout(): an explicit nil arrives as v:null
+  local tree = tabpage and vim.fn.winlayout(vim.api.nvim_tabpage_get_number(tabpage)) or vim.fn.winlayout()
+  return build(tree)
 end
 
 --- Collapse single-child frames and merge nested frames of the same direction

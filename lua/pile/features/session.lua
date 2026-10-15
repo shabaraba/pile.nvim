@@ -31,56 +31,73 @@ local function collect_saveable_buffers()
   return buffers
 end
 
---- Collect the current tab's split layout
---- Stores the winlayout() tree with each window's file and size so restore can
---- rebuild the same horizontal/vertical splits and their proportions.
---- Windows without a saveable file (sidebar, terminals, help) are left out.
---- @return table|nil Layout {version = 2, tree = node} or nil if no window qualifies
+--- Collect the split layout of every tab
+--- Stores each tab's winlayout() tree with each window's file and size so
+--- restore can rebuild the same tabs, horizontal/vertical splits and proportions.
+--- Windows without a saveable file (sidebar, terminals, help) are left out, and
+--- so are tabs that hold no such window.
+--- @return table|nil Layout {version = 3, tabs = {node...}, current_tab} or nil if no window qualifies
 local function collect_window_layout()
-  local current_win = vim.api.nvim_get_current_win()
-  local tree = layout.capture(function(win)
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  local is_excluded = function(win)
     return not is_saveable_buffer(vim.api.nvim_win_get_buf(win))
-  end)
-  if not tree then
+  end
+
+  local tabs, current_index = {}, nil
+  for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+    local tab_win = vim.api.nvim_tabpage_get_win(tab)
+
+    local function serialize(node)
+      if node.type == 'leaf' then
+        return {
+          type = 'leaf',
+          bufpath = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(node.win)),
+          row = node.row,
+          col = node.col,
+          width = node.width,
+          height = node.height,
+          focused = node.win == tab_win or nil,
+        }
+      end
+      local children = {}
+      for _, child in ipairs(node.children) do
+        table.insert(children, serialize(child))
+      end
+      return { type = node.type, children = children }
+    end
+
+    local tree = layout.capture(is_excluded, tab)
+    if tree then
+      table.insert(tabs, serialize(tree))
+      if tab == current_tab then
+        current_index = #tabs
+      end
+    end
+  end
+
+  if #tabs == 0 then
     return nil
   end
-
-  local function serialize(node)
-    if node.type == 'leaf' then
-      return {
-        type = 'leaf',
-        bufpath = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(node.win)),
-        row = node.row,
-        col = node.col,
-        width = node.width,
-        height = node.height,
-        focused = node.win == current_win or nil,
-      }
-    end
-    local children = {}
-    for _, child in ipairs(node.children) do
-      table.insert(children, serialize(child))
-    end
-    return { type = node.type, children = children }
-  end
-
-  return { version = 2, tree = serialize(tree) }
+  return { version = 3, tabs = tabs, current_tab = current_index }
 end
 
---- Convert a saved layout into a tree, accepting the legacy flat format
---- Sessions written before split trees were stored hold a plain list of
---- windows; those are rebuilt side by side as before.
+--- Convert a saved layout into a list of tab trees, accepting older formats
+--- version 2 stored a single tree for the current tab; sessions written before
+--- split trees were stored hold a plain list of windows, rebuilt side by side.
 --- @param saved table Layout as stored in the session
---- @return table|nil
-local function layout_tree(saved)
+--- @return table[] trees, number|nil current_tab
+local function layout_tabs(saved)
   if type(saved) ~= 'table' then
-    return nil
+    return {}, nil
+  end
+  if type(saved.tabs) == 'table' then
+    return saved.tabs, tonumber(saved.current_tab)
   end
   if type(saved.tree) == 'table' then
-    return saved.tree
+    return { saved.tree }, 1
   end
   if #saved == 0 then
-    return nil
+    return {}, nil
   end
 
   local children = {}
@@ -89,13 +106,18 @@ local function layout_tree(saved)
       table.insert(children, { type = 'leaf', bufpath = win_data.bufpath })
     end
   end
-  return { type = 'row', children = children }
+  return { { type = 'row', children = children } }, 1
 end
 
 --- Count the windows in a saved layout (for logging)
 local function count_windows(saved)
-  local tree = layout_tree(saved)
-  return tree and #layout.leaves(tree) or 0
+  local count = 0
+  for _, tree in ipairs((layout_tabs(saved))) do
+    if type(tree) == 'table' and tree.type then
+      count = count + #layout.leaves(tree)
+    end
+  end
+  return count
 end
 
 --- Restore a buffer from a file path
@@ -191,8 +213,20 @@ local function build_splits(node, win)
   return focused
 end
 
+--- Rebuild one tab's splits in the current tab and size them
+--- @return number|nil Window that was focused in this tab when saved
+local function restore_tab(tree)
+  local focused = build_splits(tree, vim.api.nvim_get_current_win())
+  -- Legacy layouts carry no sizes; leave Neovim's equal split in place
+  if layout.leaves(tree)[1].width then
+    layout.apply(tree)
+  end
+  return focused or vim.api.nvim_get_current_win()
+end
+
 --- Restore window layout
---- Rebuilds the saved split tree and scales the saved sizes to the current screen.
+--- Rebuilds the saved tabs and split trees and scales the saved sizes to the
+--- current screen.
 --- @param saved table|nil Layout information from collect_window_layout
 --- @param buffer_map table|nil Mapping from file path to buffer handle
 local function restore_window_layout(saved, buffer_map)
@@ -201,9 +235,18 @@ local function restore_window_layout(saved, buffer_map)
     return
   end
 
-  local saved_tree = layout_tree(saved)
-  local tree = saved_tree and resolve_tree(saved_tree, buffer_map)
-  if not tree then
+  local saved_tabs, saved_current = layout_tabs(saved)
+  local trees, current_index = {}, nil
+  for i, saved_tree in ipairs(saved_tabs) do
+    local tree = type(saved_tree) == 'table' and resolve_tree(saved_tree, buffer_map)
+    if tree then
+      table.insert(trees, tree)
+      if i == saved_current then
+        current_index = #trees
+      end
+    end
+  end
+  if #trees == 0 then
     log.debug("No layout to restore or invalid layout type")
     return
   end
@@ -215,24 +258,33 @@ local function restore_window_layout(saved, buffer_map)
     sidebar.close()
   end
 
-  -- Close all windows except current to avoid "Already only one window" warning
+  -- Close all tabs and windows except current to avoid "Already only one window" warning
+  if #vim.api.nvim_list_tabpages() > 1 then
+    vim.cmd('tabonly')
+  end
   if #vim.api.nvim_list_wins() > 1 then
     vim.cmd('only')
   end
 
-  local focused = build_splits(tree, vim.api.nvim_get_current_win())
+  local focused = {}
+  for i, tree in ipairs(trees) do
+    if i > 1 then
+      -- :tab split reuses the current buffer instead of creating an empty one
+      vim.cmd('tab split')
+    end
+    focused[i] = restore_tab(tree)
+  end
 
-  -- Legacy layouts carry no sizes; leave Neovim's equal split in place
-  if layout.leaves(tree)[1].width then
-    layout.apply(tree)
+  local target = focused[current_index or 1]
+  if target and vim.api.nvim_win_is_valid(target) then
+    vim.api.nvim_set_current_win(target)
   end
 
   if sidebar_was_open then
     sidebar.open()
-  end
-
-  if focused and vim.api.nvim_win_is_valid(focused) then
-    vim.api.nvim_set_current_win(focused)
+    if target and vim.api.nvim_win_is_valid(target) then
+      vim.api.nvim_set_current_win(target)
+    end
   end
 end
 
