@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.1.0](https://github.com/shabaraba/pile.nvim/compare/v2.0.0...v2.1.0) (2026-10-16)
+
+
+### Features
+
+* add floating preview to sidebar ([#67](https://github.com/shabaraba/pile.nvim/issues/67)) ([ec7ab13](https://github.com/shabaraba/pile.nvim/commit/ec7ab13a626dc27f7811be820d71a0426af00a52))
+* add PileSort command to sort sidebar buffers ([#66](https://github.com/shabaraba/pile.nvim/issues/66)) ([da1f1f4](https://github.com/shabaraba/pile.nvim/commit/da1f1f44b38de8943e2526361c5bd6a91f795ccf))
+* rename files and edit display names from the sidebar ([#68](https://github.com/shabaraba/pile.nvim/issues/68)) ([a84c0b5](https://github.com/shabaraba/pile.nvim/commit/a84c0b59980fed11c03570203b28e9de12ff198a))
+* show file icons in sidebar ([#64](https://github.com/shabaraba/pile.nvim/issues/64)) ([5cd3399](https://github.com/shabaraba/pile.nvim/commit/5cd33994c947c888ce86bdc4becc4e8a829d4151))
+* show unsaved and git status marks in sidebar ([#65](https://github.com/shabaraba/pile.nvim/issues/65)) ([cb89f59](https://github.com/shabaraba/pile.nvim/commit/cb89f5973a81b2447e94f5da36adcb58eb5ff77c))
+
+
+### Bug Fixes
+
+* keep split sizes when toggling the sidebar ([#71](https://github.com/shabaraba/pile.nvim/issues/71)) ([1699c3d](https://github.com/shabaraba/pile.nvim/commit/1699c3d1bfdfacea732ad57bdf9cd9357d8c92df))
+* keep visual selection after moving buffers in sidebar ([#63](https://github.com/shabaraba/pile.nvim/issues/63)) ([b06cfc4](https://github.com/shabaraba/pile.nvim/commit/b06cfc4138f15c9888891077bf8fe53cd5d7c158))
+
 ## [2.0.0](https://github.com/shabaraba/pile.nvim/compare/v1.3.1...v2.0.0) (2026-10-15)
 
 
