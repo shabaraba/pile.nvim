@@ -1,7 +1,8 @@
 # Sessions
 
-A pile session is a named list of files, their order in the sidebar, and the files shown in your
-windows. It is **not** a Vim `:mksession` — options, folds, tabs and split geometry are not saved.
+A pile session is a named list of files, their order in the sidebar, and the tabs and splits that
+show them. It is **not** a Vim `:mksession` — options, folds, cursor positions and tab-local
+directories are not saved.
 
 ## Scope and storage
 
@@ -27,7 +28,10 @@ The file is written atomically (temporary file + rename), so a failed write cann
   Terminals, help pages, scratch buffers and plugin UIs are not saved. `exclude` / `include` do
   **not** apply here.
 - **Order** — each buffer's position in the sidebar.
-- **Windows** — the file shown in each normal (non-floating) window.
+- **Windows** — for every tab page, its split layout (horizontal/vertical splits and their sizes)
+  and the file shown in each normal (non-floating) window, plus the active tab and window.
+  Windows that do not show a saveable file (the sidebar, terminals, help) are left out, as are
+  tabs that contain no such window.
 
 ## What restore does
 
@@ -35,9 +39,11 @@ The file is written atomically (temporary file + rename), so a failed write cann
 2. Each saved file that still exists is added to the buffer list **without being loaded**. It is
    read from disk the first time you display it, so restoring many files does not start syntax,
    treesitter or language servers for all of them.
-3. If windows were saved, all windows except the current one are closed (`:only`) and the saved
-   files are shown in **vertical splits**, one per saved window. The original split directions
-   and sizes are not restored.
+3. If windows were saved, all other tabs and windows are closed (`:tabonly`, `:only`) and each
+   saved tab is rebuilt with its original split directions. Sizes are scaled to the current screen
+   so the split ratios match, and the previously active tab and window are focused again. Windows
+   whose file no longer exists are dropped and the remaining splits fill their space. If the
+   sidebar was open, it is reopened in the active tab.
 
 Restoring **adds** buffers; buffers you already have open stay open.
 

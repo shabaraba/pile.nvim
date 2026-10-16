@@ -52,6 +52,7 @@ lua/pile/
 │   └── git.lua        # git root lookup
 └── windows/
     ├── init.lua       # Window utilities (get_available_windows, set_buffer)
+    ├── layout.lua     # Split-tree snapshots; re-applies split ratios after toggle/restore
     ├── picker.lua     # nvim-window-picker integration
     ├── preview.lua    # Floating preview that follows the sidebar cursor
     └── sidebar/

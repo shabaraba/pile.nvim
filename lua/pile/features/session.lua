@@ -2,7 +2,7 @@
 --- Handles saving and restoring buffer lists and window layouts
 local session_store = require('pile.storage.session_store')
 local log = require('pile.log')
-local windows = require('pile.windows')
+local layout = require('pile.windows.layout')
 
 local M = {}
 
@@ -31,25 +31,93 @@ local function collect_saveable_buffers()
   return buffers
 end
 
---- Collect window layout information for all tabs
---- NOTE: Currently stores buffer list per window. Full winlayout() tree restoration
---- is not yet implemented to avoid complexity. Windows are restored as vertical splits.
---- @return table Layout information with buffers per window
+--- Collect the split layout of every tab
+--- Stores each tab's winlayout() tree with each window's file and size so
+--- restore can rebuild the same tabs, horizontal/vertical splits and proportions.
+--- Windows without a saveable file (sidebar, terminals, help) are left out, and
+--- so are tabs that hold no such window.
+--- @return table|nil Layout {version = 3, tabs = {node...}, current_tab} or nil if no window qualifies
 local function collect_window_layout()
-  local layout = {}
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  local is_excluded = function(win)
+    return not is_saveable_buffer(vim.api.nvim_win_get_buf(win))
+  end
 
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if windows.is_normal_window(win) then
-      local buf = vim.api.nvim_win_get_buf(win)
-      if is_saveable_buffer(buf) then
-        table.insert(layout, {
-          bufpath = vim.api.nvim_buf_get_name(buf),
-        })
+  local tabs, current_index = {}, nil
+  for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+    local tab_win = vim.api.nvim_tabpage_get_win(tab)
+
+    local function serialize(node)
+      if node.type == 'leaf' then
+        return {
+          type = 'leaf',
+          bufpath = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(node.win)),
+          row = node.row,
+          col = node.col,
+          width = node.width,
+          height = node.height,
+          focused = node.win == tab_win or nil,
+        }
+      end
+      local children = {}
+      for _, child in ipairs(node.children) do
+        table.insert(children, serialize(child))
+      end
+      return { type = node.type, children = children }
+    end
+
+    local tree = layout.capture(is_excluded, tab)
+    if tree then
+      table.insert(tabs, serialize(tree))
+      if tab == current_tab then
+        current_index = #tabs
       end
     end
   end
 
-  return layout
+  if #tabs == 0 then
+    return nil
+  end
+  return { version = 3, tabs = tabs, current_tab = current_index }
+end
+
+--- Convert a saved layout into a list of tab trees, accepting older formats
+--- version 2 stored a single tree for the current tab; sessions written before
+--- split trees were stored hold a plain list of windows, rebuilt side by side.
+--- @param saved table Layout as stored in the session
+--- @return table[] trees, number|nil current_tab
+local function layout_tabs(saved)
+  if type(saved) ~= 'table' then
+    return {}, nil
+  end
+  if type(saved.tabs) == 'table' then
+    return saved.tabs, tonumber(saved.current_tab)
+  end
+  if type(saved.tree) == 'table' then
+    return { saved.tree }, 1
+  end
+  if #saved == 0 then
+    return {}, nil
+  end
+
+  local children = {}
+  for _, win_data in ipairs(saved) do
+    if type(win_data) == 'table' and win_data.bufpath then
+      table.insert(children, { type = 'leaf', bufpath = win_data.bufpath })
+    end
+  end
+  return { { type = 'row', children = children } }, 1
+end
+
+--- Count the windows in a saved layout (for logging)
+local function count_windows(saved)
+  local count = 0
+  for _, tree in ipairs((layout_tabs(saved))) do
+    if type(tree) == 'table' and tree.type then
+      count = count + #layout.leaves(tree)
+    end
+  end
+  return count
 end
 
 --- Restore a buffer from a file path
@@ -77,9 +145,11 @@ end
 
 --- Close all empty nofile buffers
 --- Removes buffers with no name and buftype='nofile' (e.g., startup buffers)
+--- The sidebar's own scratch buffer matches too and is kept.
 local function close_empty_nofile_buffers()
+  local sidebar_buf = require('pile.globals').sidebar_buf
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if vim.api.nvim_buf_is_valid(buf) then
+    if buf ~= sidebar_buf and vim.api.nvim_buf_is_valid(buf) then
       local name = vim.api.nvim_buf_get_name(buf)
       local buftype = vim.bo[buf].buftype
       if name == '' and buftype == 'nofile' then
@@ -89,39 +159,131 @@ local function close_empty_nofile_buffers()
   end
 end
 
---- Restore window layout
---- NOTE: Currently restores windows as vertical splits only. Full winlayout() tree
---- restoration with proper split directions and sizes is not yet implemented.
---- @param layout table|nil Layout information from collect_window_layout
---- @param buffer_map table|nil Mapping from file path to buffer handle
-local function restore_window_layout(layout, buffer_map)
-  if not layout or type(layout) ~= 'table' or #layout == 0 then
-    log.debug("No layout to restore or invalid layout type")
-    return
+--- Drop windows whose file could not be restored and attach buffer handles
+--- @return table|nil Normalized tree, or nil if no window is left
+local function resolve_tree(node, buffer_map)
+  if node.type == 'leaf' then
+    local buf = node.bufpath and buffer_map[node.bufpath]
+    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+      return nil
+    end
+    return vim.tbl_extend('force', node, { buf = buf })
   end
 
+  if (node.type ~= 'row' and node.type ~= 'col') or type(node.children) ~= 'table' then
+    return nil
+  end
+
+  local children = {}
+  for _, child in ipairs(node.children) do
+    local resolved = type(child) == 'table' and resolve_tree(child, buffer_map)
+    if resolved then
+      table.insert(children, resolved)
+    end
+  end
+  return layout.normalize({ type = node.type, children = children })
+end
+
+--- Recreate the splits of a tree inside `win`
+--- Siblings are split off first, then each one is subdivided, which yields the
+--- same frame structure Neovim reports from winlayout().
+--- @return number|nil Window that was focused when the session was saved
+local function build_splits(node, win)
+  if node.type == 'leaf' then
+    vim.api.nvim_win_set_buf(win, node.buf)
+    return node.focused and win or nil
+  end
+
+  local split_cmd = node.type == 'row' and 'rightbelow vsplit' or 'rightbelow split'
+  local wins = { win }
+  for i = 2, #node.children do
+    vim.api.nvim_set_current_win(wins[i - 1])
+    local ok = pcall(vim.cmd, split_cmd)
+    if not ok then
+      -- Not enough room (E36): keep what fits rather than failing the restore
+      break
+    end
+    wins[i] = vim.api.nvim_get_current_win()
+  end
+
+  local focused
+  for i, w in ipairs(wins) do
+    focused = build_splits(node.children[i], w) or focused
+  end
+  return focused
+end
+
+--- Rebuild one tab's splits in the current tab and size them
+--- @return number|nil Window that was focused in this tab when saved
+local function restore_tab(tree)
+  local focused = build_splits(tree, vim.api.nvim_get_current_win())
+  -- Legacy layouts carry no sizes; leave Neovim's equal split in place
+  if layout.leaves(tree)[1].width then
+    layout.apply(tree)
+  end
+  return focused or vim.api.nvim_get_current_win()
+end
+
+--- Restore window layout
+--- Rebuilds the saved tabs and split trees and scales the saved sizes to the
+--- current screen.
+--- @param saved table|nil Layout information from collect_window_layout
+--- @param buffer_map table|nil Mapping from file path to buffer handle
+local function restore_window_layout(saved, buffer_map)
   if not buffer_map or type(buffer_map) ~= 'table' then
     log.debug("Invalid buffer_map provided to restore_window_layout")
     return
   end
 
-  -- Close all windows except current to avoid "Already only one window" warning
-  local win_count = #vim.api.nvim_list_wins()
-  if win_count > 1 then
+  local saved_tabs, saved_current = layout_tabs(saved)
+  local trees, current_index = {}, nil
+  for i, saved_tree in ipairs(saved_tabs) do
+    local tree = type(saved_tree) == 'table' and resolve_tree(saved_tree, buffer_map)
+    if tree then
+      table.insert(trees, tree)
+      if i == saved_current then
+        current_index = #trees
+      end
+    end
+  end
+  if #trees == 0 then
+    log.debug("No layout to restore or invalid layout type")
+    return
+  end
+
+  -- The sidebar must not be the window that survives :only
+  local sidebar = require('pile.windows.sidebar')
+  local sidebar_was_open = sidebar.is_opened()
+  if sidebar_was_open then
+    sidebar.close()
+  end
+
+  -- Close all tabs and windows except current to avoid "Already only one window" warning
+  if #vim.api.nvim_list_tabpages() > 1 then
+    vim.cmd('tabonly')
+  end
+  if #vim.api.nvim_list_wins() > 1 then
     vim.cmd('only')
   end
 
-  local is_first_window = true
-  for _, win_data in ipairs(layout) do
-    if type(win_data) == 'table' and win_data.bufpath then
-      local buf = buffer_map[win_data.bufpath]
-      if buf and vim.api.nvim_buf_is_valid(buf) then
-        if not is_first_window then
-          vim.cmd('vsplit')
-        end
-        vim.api.nvim_set_current_buf(buf)
-        is_first_window = false
-      end
+  local focused = {}
+  for i, tree in ipairs(trees) do
+    if i > 1 then
+      -- :tab split reuses the current buffer instead of creating an empty one
+      vim.cmd('tab split')
+    end
+    focused[i] = restore_tab(tree)
+  end
+
+  local target = focused[current_index or 1]
+  if target and vim.api.nvim_win_is_valid(target) then
+    vim.api.nvim_set_current_win(target)
+  end
+
+  if sidebar_was_open then
+    sidebar.open()
+    if target and vim.api.nvim_win_is_valid(target) then
+      vim.api.nvim_set_current_win(target)
     end
   end
 end
@@ -138,11 +300,11 @@ function M.save_current_buffers(session_name)
     return false
   end
 
-  local layout = collect_window_layout()
-  local ok = session_store.save_session(session_name, buffers, layout)
+  local window_layout = collect_window_layout()
+  local ok = session_store.save_session(session_name, buffers, window_layout)
   if ok then
     log.debug(string.format("Saved %d buffers and %d windows to session '%s'",
-      #buffers, #layout, session_name))
+      #buffers, count_windows(window_layout), session_name))
   end
   return ok
 end
@@ -182,12 +344,8 @@ function M.restore_session(session_name)
       end
     end
 
-    if session.layout and type(session.layout) == 'table' and #session.layout > 0 then
-      log.debug(string.format("Restoring layout with %d windows", #session.layout))
-      restore_window_layout(session.layout, buffer_map)
-    else
-      log.debug("No layout to restore or layout is empty")
-    end
+    log.debug(string.format("Restoring layout with %d windows", count_windows(session.layout)))
+    restore_window_layout(session.layout, buffer_map)
   end)
 
   sidebar.resume()
