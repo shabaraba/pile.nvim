@@ -1,5 +1,6 @@
 local globals = require 'pile.globals'
 local config = require 'pile.config'
+local wins = require 'pile.windows.sidebar.wins'
 
 local M = {}
 
@@ -13,8 +14,8 @@ local state = {
   shown_buf = nil,
 }
 
-local function float_config(buffer)
-  local col = vim.api.nvim_win_get_width(globals.sidebar_win) + 1
+local function float_config(buffer, sidebar_win)
+  local col = vim.api.nvim_win_get_width(sidebar_win) + 1
   return {
     relative = 'editor',
     row = 0,
@@ -55,7 +56,8 @@ local function close_window()
 end
 
 local function show(buffer)
-  if not buffer or not globals.sidebar_win or not vim.api.nvim_win_is_valid(globals.sidebar_win) then
+  local sidebar_win = wins.get()
+  if not buffer or not sidebar_win then
     close_window()
     return
   end
@@ -63,7 +65,7 @@ local function show(buffer)
     return
   end
 
-  local win_config = float_config(buffer)
+  local win_config = float_config(buffer, sidebar_win)
   local loaded = vim.api.nvim_buf_is_loaded(buffer.buf)
   local target = loaded and buffer.buf or fill_scratch(buffer, win_config.height)
 

@@ -1,12 +1,14 @@
 local globals = require 'pile.globals'
 local register = require 'pile.features.register'
 local reorder = require 'pile.features.reorder'
+local membership = require 'pile.buffers.membership'
 local preview = require 'pile.windows.preview'
+local wins = require 'pile.windows.sidebar.wins'
 
 local M = {}
 
 local function get_current_line()
-  return vim.api.nvim_win_get_cursor(globals.sidebar_win)[1]
+  return vim.api.nvim_win_get_cursor(wins.get())[1]
 end
 
 local function get_visual_range()
@@ -34,7 +36,7 @@ local function set_keymap(mode, lhs, callback, desc)
   })
 end
 
---- @param sidebar table Sidebar module providing get_buffer_list(), get_buffer_at_cursor() and update()
+--- @param sidebar table Sidebar module providing get_buffer_list(), get_rows(), get_row_at_cursor(), get_buffer_at_cursor() and update()
 function M.setup(sidebar)
   set_keymap('n', 'a', function()
     require('pile.windows.sidebar.edit_mode').enter(sidebar, 'alias')
@@ -46,41 +48,69 @@ function M.setup(sidebar)
 
   local buffer_at_cursor = sidebar.get_buffer_at_cursor
 
+  -- Headers are skipped, and a buffer selected in several groups counts once
   local function selected_buffers()
     local from_line, to_line = get_visual_range()
-    return vim.list_slice(sidebar.get_buffer_list(), from_line, to_line)
+    local selected, seen = {}, {}
+    for _, row in ipairs(vim.list_slice(sidebar.get_rows(), from_line, to_line)) do
+      if row.buffer and not seen[row.buffer.buf] then
+        seen[row.buffer.buf] = true
+        table.insert(selected, row.buffer)
+      end
+    end
+    return selected
   end
 
+  -- On a header, both p and P put at the top of its group
   local function paste(offset)
     if register.is_empty() then
       print("Register is empty")
       return
     end
 
+    local row = sidebar.get_row_at_cursor()
+    if not row then
+      return
+    end
+    local group = row.group
     local count = register.get_count()
-    local new_list = register.paste(get_current_line() + offset, sidebar.get_buffer_list())
-    reorder.save_buffer_order(new_list)
+    local position = row.index and row.index + offset or 0
+    local new_group = register.paste(position, group.buffers)
+    if group.tab then
+      for _, buffer in ipairs(new_group) do
+        membership.add(group.tab, buffer.buf)
+      end
+    end
+    reorder.save_group_order(sidebar.get_buffer_list(), group.buffers, new_group)
     sidebar.update()
     print(string.format("Pasted %d buffer(s)", count))
   end
 
   local function move_line(step)
-    local current_line = get_current_line()
-    if reorder.shift(sidebar.get_buffer_list(), current_line, step) then
+    local row = sidebar.get_row_at_cursor()
+    if row and row.buffer and reorder.shift(sidebar.get_buffer_list(), row.group.buffers, row.index, step) then
+      local current_line = get_current_line()
       sidebar.update()
-      vim.api.nvim_win_set_cursor(globals.sidebar_win, {current_line + step, 0})
+      vim.api.nvim_win_set_cursor(wins.get(), {current_line + step, 0})
     end
   end
 
+  -- Only a selection of buffers within one group can move, and not past its ends
   local function move_selection(direction)
     local from_line, to_line = get_visual_range()
-    local buffer_list = sidebar.get_buffer_list()
+    local rows = sidebar.get_rows()
+    local first, last = rows[from_line], rows[to_line]
+    if not (first and last and first.buffer and last.buffer and first.group == last.group) then
+      return
+    end
+    local group_buffers = first.group.buffers
     local step = direction == "down" and 1 or -1
-    if from_line + step < 1 or to_line + step > #buffer_list then
+    if first.index + step < 1 or last.index + step > #group_buffers then
       return
     end
 
-    reorder.save_buffer_order(reorder.move_range(from_line, to_line, direction, buffer_list))
+    local moved = reorder.move_range(first.index, last.index, direction, group_buffers)
+    reorder.save_group_order(sidebar.get_buffer_list(), group_buffers, moved)
     sidebar.update()
     restore_visual_selection(from_line + step, to_line + step)
   end

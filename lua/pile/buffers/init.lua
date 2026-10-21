@@ -4,6 +4,8 @@ local picker = require('pile.windows.picker')
 local log = require('pile.log')
 local filter = require('pile.buffers.filter')
 local disambiguate = require('pile.buffers.disambiguate')
+local groups = require('pile.buffers.groups')
+local wins = require('pile.windows.sidebar.wins')
 
 local M = {}
 
@@ -12,7 +14,7 @@ local function get_buffer_windows(buf)
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     if vim.api.nvim_win_is_valid(win) then
       local win_buf = vim.api.nvim_win_get_buf(win)
-      if win_buf == buf and win ~= globals.sidebar_win and win_buf ~= globals.sidebar_buf
+      if win_buf == buf and not wins.is_sidebar(win) and win_buf ~= globals.sidebar_buf
         and window.is_normal_window(win) then
         table.insert(windows, win)
       end
@@ -102,8 +104,9 @@ function M.open_selected(props)
   end
 end
 
+--- Cycles within the current tab's group
 local function switch_buffer(offset)
-  local buffer_list = M.get_list()
+  local buffer_list = groups.of_tab(M.get_list())
   local current_buf = M.get_current()
   for i, buffer in ipairs(buffer_list) do
     if buffer.buf == current_buf then

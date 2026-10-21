@@ -3,6 +3,7 @@ local config = require 'pile.config'
 local session_store = require 'pile.storage.session_store'
 local file_rename = require 'pile.features.file_rename'
 local status_watch = require 'pile.windows.sidebar.status_watch'
+local wins = require 'pile.windows.sidebar.wins'
 
 local M = {}
 
@@ -135,11 +136,12 @@ function M.enter(sidebar, kind)
   vim.bo[buf].buftype = 'acwrite'
   vim.bo[buf].bufhidden = 'wipe'
   vim.bo[buf].modified = false
-  state = { kind = kind, entries = entries, sidebar = sidebar, buf = buf }
+  local win = wins.get()
+  state = { kind = kind, entries = entries, sidebar = sidebar, buf = buf, win = win }
 
   require('pile.windows.preview').close()
-  vim.api.nvim_win_set_buf(globals.sidebar_win, buf)
-  vim.wo[globals.sidebar_win].winbar = string.format(' pile: edit %s  (:w apply, q cancel)', kind == 'file' and 'paths' or 'names')
+  vim.api.nvim_win_set_buf(win, buf)
+  vim.wo[win].winbar = string.format(' pile: edit %s  (:w apply, q cancel)', kind == 'file' and 'paths' or 'names')
 
   vim.api.nvim_create_autocmd("BufWriteCmd", { buffer = buf, callback = write })
   vim.api.nvim_create_autocmd("BufWipeout", {
@@ -154,15 +156,15 @@ function M.exit()
     return
   end
   local sidebar = state.sidebar
-  local edit_buf = state.buf
+  local edit_buf, win = state.buf, state.win
   state = nil
 
   if vim.api.nvim_buf_is_valid(edit_buf) then
     vim.bo[edit_buf].modified = false
   end
-  if globals.sidebar_win and vim.api.nvim_win_is_valid(globals.sidebar_win) then
-    vim.wo[globals.sidebar_win].winbar = ''
-    vim.api.nvim_win_set_buf(globals.sidebar_win, globals.sidebar_buf)
+  if vim.api.nvim_win_is_valid(win) and globals.sidebar_buf and vim.api.nvim_buf_is_valid(globals.sidebar_buf) then
+    vim.wo[win].winbar = ''
+    vim.api.nvim_win_set_buf(win, globals.sidebar_buf)
   end
   if vim.api.nvim_buf_is_valid(edit_buf) then
     vim.api.nvim_buf_delete(edit_buf, { force = true })

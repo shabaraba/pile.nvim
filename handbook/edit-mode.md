@@ -15,6 +15,8 @@ While editing:
 - `q` discards the changes and returns to the sidebar.
 - Each line stays tied to its buffer: **do not add, delete or reorder lines**. `:w` rejects a
   changed line count; the list order is not changed by edit mode.
+- The list has no tab headers and shows each buffer once, in the stored order, even when the
+  sidebar shows it in several tab groups.
 - When validation fails or you decline the confirmation, you stay in edit mode and can fix the text.
 
 ## Display names (`a`)
