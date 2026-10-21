@@ -1,5 +1,6 @@
 --- What a session stores: the saveable buffers and the split layout of every tab
 local layout = require('pile.windows.layout')
+local tab_groups = require('pile.features.session.tab_groups')
 
 local M = {}
 
@@ -32,17 +33,18 @@ function M.buffers()
   return buffers
 end
 
---- Collect the split layout of every tab
+--- Collect the split layout, name and buffers of every tab
 --- Stores each tab's winlayout() tree with each window's file and size so
 --- restore can rebuild the same tabs, horizontal/vertical splits and proportions.
 --- Windows without a saveable file (sidebar, terminals, help) are left out, and
---- so are tabs that hold no such window.
---- @return table|nil Layout {version = 3, tabs = {node...}, current_tab} or nil if no window qualifies
+--- so are tabs that hold neither such a window nor a saveable buffer.
+--- @return table|nil Layout {version = 4, tabs = {{tree, name, buffers}...}, current_tab} or nil if no tab qualifies
 function M.window_layout()
   local current_tab = vim.api.nvim_get_current_tabpage()
   local is_excluded = function(win)
     return not M.is_saveable(vim.api.nvim_win_get_buf(win))
   end
+  local buffer_list = require('pile.buffers').get_list()
 
   local tabs, current_index = {}, nil
   for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
@@ -68,8 +70,10 @@ function M.window_layout()
     end
 
     local tree = layout.capture(is_excluded, tab)
-    if tree then
-      table.insert(tabs, serialize(tree))
+    local entry = tab_groups.capture(tab, buffer_list, M.is_saveable)
+    if tree or #entry.buffers > 0 then
+      entry.tree = tree and serialize(tree)
+      table.insert(tabs, entry)
       if tab == current_tab then
         current_index = #tabs
       end
@@ -79,23 +83,29 @@ function M.window_layout()
   if #tabs == 0 then
     return nil
   end
-  return { version = 3, tabs = tabs, current_tab = current_index }
+  return { version = 4, tabs = tabs, current_tab = current_index }
 end
 
---- Convert a saved layout into a list of tab trees, accepting older formats
---- version 2 stored a single tree for the current tab; sessions written before
---- split trees were stored hold a plain list of windows, rebuilt side by side.
+--- Convert a saved layout into a list of tabs {tree, name, buffers}, accepting older formats
+--- version 3 stored only each tab's tree; version 2 a single tree for the
+--- current tab; sessions written before split trees were stored hold a plain
+--- list of windows, rebuilt side by side.
 --- @param saved table Layout as stored in the session
---- @return table[] trees, number|nil current_tab
+--- @return table[] tabs, number|nil current_tab
 function M.layout_tabs(saved)
   if type(saved) ~= 'table' then
     return {}, nil
   end
   if type(saved.tabs) == 'table' then
-    return saved.tabs, tonumber(saved.current_tab)
+    local tabs = {}
+    for i, tab in ipairs(saved.tabs) do
+      local valid = type(tab) == 'table'
+      tabs[i] = valid and (tab.type and { tree = tab } or tab) or {}
+    end
+    return tabs, tonumber(saved.current_tab)
   end
   if type(saved.tree) == 'table' then
-    return { saved.tree }, 1
+    return { { tree = saved.tree } }, 1
   end
   if #saved == 0 then
     return {}, nil
@@ -107,15 +117,15 @@ function M.layout_tabs(saved)
       table.insert(children, { type = 'leaf', bufpath = win_data.bufpath })
     end
   end
-  return { { type = 'row', children = children } }, 1
+  return { { tree = { type = 'row', children = children } } }, 1
 end
 
 --- Count the windows in a saved layout (for logging)
 function M.count_windows(saved)
   local count = 0
-  for _, tree in ipairs((M.layout_tabs(saved))) do
-    if type(tree) == 'table' and tree.type then
-      count = count + #layout.leaves(tree)
+  for _, tab in ipairs((M.layout_tabs(saved))) do
+    if type(tab.tree) == 'table' and tab.tree.type then
+      count = count + #layout.leaves(tab.tree)
     end
   end
   return count

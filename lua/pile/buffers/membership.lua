@@ -48,6 +48,16 @@ function M.set_order(tab, bufs)
   end
 end
 
+--- Make `bufs`, in this order, the only members of `tab`
+--- @param bufs number[]
+function M.reset(tab, bufs)
+  members[tab] = {}
+  for _, buf in ipairs(bufs) do
+    M.add(tab, buf)
+  end
+  M.set_order(tab, bufs)
+end
+
 --- @return table<number, number>|nil Rank of each ordered member of `tab`
 function M.order_of(tab)
   return orders[tab]

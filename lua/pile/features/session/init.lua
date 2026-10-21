@@ -3,48 +3,11 @@
 local session_store = require('pile.storage.session_store')
 local log = require('pile.log')
 local capture = require('pile.features.session.capture')
+local restore_buffers = require('pile.features.session.restore_buffers')
 local restore_window_layout = require('pile.features.session.restore_layout')
+local tab_groups = require('pile.features.session.tab_groups')
 
 local M = {}
-
---- Restore a buffer from a file path
---- The buffer is added but deliberately left unloaded: loading it here would fire
---- BufRead/FileType for every session file, dragging syntax, treesitter and LSP
---- attach into startup. Neovim loads it on first display instead.
---- @param path string File path to restore
---- @return boolean Success status
---- @return number|nil Buffer handle if successful
-local function restore_buffer(path)
-  if not path or vim.fn.filereadable(path) ~= 1 then
-    log.debug("File not readable: " .. (path or "nil"))
-    return false, nil
-  end
-
-  local buf = vim.fn.bufadd(path)
-  if buf > 0 then
-    -- bufadd() leaves 'buflisted' off, which hides the buffer from :bnext/:bprev
-    vim.bo[buf].buflisted = true
-    log.trace("Restored buffer: " .. path)
-    return true, buf
-  end
-  return false, nil
-end
-
---- Close all empty nofile buffers
---- Removes buffers with no name and buftype='nofile' (e.g., startup buffers)
---- The sidebar's own scratch buffer matches too and is kept.
-local function close_empty_nofile_buffers()
-  local sidebar_buf = require('pile.globals').sidebar_buf
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-    if buf ~= sidebar_buf and vim.api.nvim_buf_is_valid(buf) then
-      local name = vim.api.nvim_buf_get_name(buf)
-      local buftype = vim.bo[buf].buftype
-      if name == '' and buftype == 'nofile' then
-        pcall(vim.api.nvim_buf_delete, buf, { force = true })
-      end
-    end
-  end
-end
 
 --- Save current buffers and window layout to a session
 --- @param session_name string|nil Session name (defaults to current session)
@@ -59,7 +22,7 @@ function M.save_current_buffers(session_name)
   end
 
   local window_layout = capture.window_layout()
-  local ok = session_store.save_session(session_name, buffers, window_layout)
+  local ok = session_store.save_session(session_name, buffers, window_layout or {})
   if ok then
     log.debug(string.format("Saved %d buffers and %d windows to session '%s'",
       #buffers, capture.count_windows(window_layout), session_name))
@@ -92,19 +55,12 @@ function M.restore_session(session_name)
 
   local restored_count = 0
   local ok, err = pcall(function()
-    close_empty_nofile_buffers()
-
-    local buffer_map = {}
-    for _, buf_data in ipairs(buffers) do
-      local restored, buf = restore_buffer(buf_data.path)
-      if restored then
-        restored_count = restored_count + 1
-        buffer_map[buf_data.path] = buf
-      end
-    end
+    restore_buffers.close_empty_nofile()
+    local buffer_map
+    buffer_map, restored_count = restore_buffers.add(buffers)
 
     log.debug(string.format("Restoring layout with %d windows", capture.count_windows(session.layout)))
-    restore_window_layout(session.layout, buffer_map)
+    tab_groups.apply(restore_window_layout(session.layout, buffer_map), buffer_map)
   end)
 
   sidebar.resume()

@@ -2,6 +2,7 @@
 --- A buffer that belongs to several tabs appears in each of their groups. Each
 --- group keeps the order of the buffer list.
 local membership = require('pile.buffers.membership')
+local tab_names = require('pile.tab_names')
 
 local M = {}
 
@@ -46,8 +47,8 @@ end
 function M.build(buffer_list)
   local groups, assigned = {}, {}
 
-  for number, tab in ipairs(vim.api.nvim_list_tabpages()) do
-    local group = { tab = tab, label = 'Tab ' .. number, buffers = M.of_tab(buffer_list, tab) }
+  for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+    local group = { tab = tab, label = tab_names.label(tab), buffers = M.of_tab(buffer_list, tab) }
     for _, buffer in ipairs(group.buffers) do
       assigned[buffer.buf] = true
     end
@@ -92,6 +93,15 @@ function M.find_row(rows, buf, tab)
     end
   end
   return first
+end
+
+--- @return number|nil Row of the header of `tab`'s group
+function M.find_header(rows, tab)
+  for i, row in ipairs(rows) do
+    if not row.buffer and row.group.tab == tab then
+      return i
+    end
+  end
 end
 
 local function name_set(list)

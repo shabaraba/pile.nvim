@@ -1,89 +1,55 @@
 local globals = require 'pile.globals'
-local config = require 'pile.config'
-local session_store = require 'pile.storage.session_store'
-local file_rename = require 'pile.features.file_rename'
+local edit_apply = require 'pile.windows.sidebar.edit_apply'
 local status_watch = require 'pile.windows.sidebar.status_watch'
 local wins = require 'pile.windows.sidebar.wins'
 
 local M = {}
 
+local MODES = edit_apply.MODES
+
 -- Edits happen in a throwaway acwrite buffer shown in the sidebar window, so the
 -- sidebar buffer itself (keymaps, decorations, options) is never touched.
 local state = nil
 
-local function to_absolute(text)
-  return vim.fn.fnamemodify(vim.fs.normalize(text), ':p')
+--- @return string|nil error for an edited header that cannot be renamed
+local function check_header(row)
+  if not MODES[state.kind].edits_headers then
+    return 'Headers cannot be edited here; rename tabs with `a`'
+  end
+  if not row.group.tab then
+    return 'The ' .. row.group.label .. ' header cannot be renamed'
+  end
 end
 
-local function apply_aliases(changes)
-  local updates = {}
-  for _, change in ipairs(changes) do
-    local buffer = change.entry.buffer
-    local cleared = change.text == '' or change.text == buffer.filename
-    updates[buffer.name] = not cleared and change.text or false
-  end
-  session_store.update_aliases(updates)
-  return nil, false
-end
-
-local function confirm_renames(renames)
-  if not config.rename.confirm then
-    return true
-  end
-  local lines = {}
-  for _, change in ipairs(renames) do
-    table.insert(lines, vim.fn.fnamemodify(change.from, ':.') .. ' -> ' .. vim.fn.fnamemodify(change.to, ':.'))
-  end
-  return vim.fn.confirm('Rename files?\n' .. table.concat(lines, '\n'), '&Yes\n&No', 2) == 1
-end
-
+--- A buffer shown in several groups takes one name; its edited rows must agree
+--- @return table[]|nil changes {buffer, text}
+--- @return table[]|nil tab_changes {tab, text}
 --- @return string|nil error
---- @return boolean keep_editing true when nothing was changed and the edits can be fixed
-local function apply_file_renames(changes)
-  local renames = {}
-  for _, change in ipairs(changes) do
-    if change.text == '' then
-      return 'A file name cannot be empty', true
-    end
-    local buffer = change.entry.buffer
-    table.insert(renames, { buf = buffer.buf, from = buffer.name, to = to_absolute(change.text) })
-  end
-
-  local invalid = file_rename.validate(renames)
-  if invalid then
-    return invalid, true
-  end
-  if not confirm_renames(renames) then
-    return 'Rename cancelled', true
-  end
-  return file_rename.apply(renames), false
-end
-
-local MODES = {
-  alias = {
-    text = function(buffer) return buffer.alias or buffer.filename end,
-    apply = apply_aliases,
-  },
-  file = {
-    text = function(buffer) return vim.fn.fnamemodify(buffer.name, ':.') end,
-    apply = apply_file_renames,
-  },
-}
-
 local function collect_changes()
   local lines = vim.api.nvim_buf_get_lines(state.buf, 0, -1, false)
   if #lines ~= #state.entries then
-    return nil, 'Adding or removing lines is not supported; edit the names in place'
+    return nil, nil, 'Adding or removing lines is not supported; edit the names in place'
   end
 
-  local changes = {}
+  local changes, tab_changes, by_buf = {}, {}, {}
   for i, entry in ipairs(state.entries) do
-    local text = vim.trim(lines[i])
+    local text, row = vim.trim(lines[i]), entry.row
     if text ~= entry.text then
-      table.insert(changes, { entry = entry, text = text })
+      if not row.buffer then
+        local invalid = check_header(row)
+        if invalid then
+          return nil, nil, invalid
+        end
+        table.insert(tab_changes, { tab = row.group.tab, text = text })
+      elseif not by_buf[row.buffer.buf] then
+        by_buf[row.buffer.buf] = text
+        table.insert(changes, { buffer = row.buffer, text = text })
+      elseif by_buf[row.buffer.buf] ~= text then
+        return nil, nil, string.format('%s has different names in its rows', entry.text)
+      end
     end
   end
-  return changes, nil
+  return changes, tab_changes, nil
 end
 
 local function notify_error(message)
@@ -91,7 +57,7 @@ local function notify_error(message)
 end
 
 local function write()
-  local changes, invalid = collect_changes()
+  local changes, tab_changes, invalid = collect_changes()
   if invalid then
     notify_error(invalid)
     return
@@ -106,6 +72,7 @@ local function write()
       end
     end
   end
+  edit_apply.apply_tab_names(tab_changes)
   -- The edit buffer cannot be swapped out and wiped while its own :write is running
   vim.bo[state.buf].modified = false
   vim.schedule(M.exit)
@@ -124,23 +91,30 @@ function M.enter(sidebar, kind)
   end
 
   local entries, lines = {}, {}
-  for _, buffer in ipairs(sidebar.get_buffer_list()) do
-    local text = MODES[kind].text(buffer)
-    table.insert(entries, { buffer = buffer, text = text })
+  for _, row in ipairs(sidebar.get_rows()) do
+    local text = row.buffer and MODES[kind].text(row.buffer) or row.group.label
+    table.insert(entries, { row = row, text = text })
     table.insert(lines, text)
   end
 
   local buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  for i, entry in ipairs(entries) do
+    if not entry.row.buffer then
+      vim.api.nvim_buf_add_highlight(buf, -1, 'PileTabHeader', i - 1, 0, -1)
+    end
+  end
   vim.api.nvim_buf_set_name(buf, 'pile://edit/' .. buf)
   vim.bo[buf].buftype = 'acwrite'
   vim.bo[buf].bufhidden = 'wipe'
   vim.bo[buf].modified = false
   local win = wins.get()
+  local cursor = vim.api.nvim_win_get_cursor(win)
   state = { kind = kind, entries = entries, sidebar = sidebar, buf = buf, win = win }
 
   require('pile.windows.preview').close()
   vim.api.nvim_win_set_buf(win, buf)
+  pcall(vim.api.nvim_win_set_cursor, win, cursor)
   vim.wo[win].winbar = string.format(' pile: edit %s  (:w apply, q cancel)', kind == 'file' and 'paths' or 'names')
 
   vim.api.nvim_create_autocmd("BufWriteCmd", { buffer = buf, callback = write })

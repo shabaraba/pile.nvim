@@ -99,6 +99,7 @@ function M.get_current_session()
   return M.get_session(M.get_current_session_name())
 end
 
+--- @param layout table|nil nil keeps the layout already saved (only the buffer order changes)
 function M.save_session(name, buffers, layout)
   if not name or name == '' then
     log.warn("Session name cannot be empty")
@@ -109,10 +110,11 @@ function M.save_session(name, buffers, layout)
 
   return get_store().update(function(data)
     data.sessions = data.sessions or {}
+    local saved = data.sessions[name]
     data.sessions[name] = {
       name = name,
       buffers = buffer_data,
-      layout = layout or {},
+      layout = layout or (saved and saved.layout) or {},
       last_updated = os.time()
     }
     return data

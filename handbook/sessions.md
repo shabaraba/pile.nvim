@@ -30,8 +30,10 @@ The file is written atomically (temporary file + rename), so a failed write cann
 - **Order** — each buffer's position in the sidebar.
 - **Windows** — for every tab page, its split layout (horizontal/vertical splits and their sizes)
   and the file shown in each normal (non-floating) window, plus the active tab and window.
-  Windows that do not show a saveable file (the sidebar, terminals, help) are left out, as are
-  tabs that contain no such window.
+  Windows that do not show a saveable file (the sidebar, terminals, help) are left out.
+- **Tab groups** — for every tab page, its name and the buffers that belong to it, in the order of
+  its group. Buffers that belong to no tab are saved as well and come back under `Unassigned`.
+  A tab that has neither a saveable window nor a saveable buffer is not saved.
 
 ## What restore does
 
@@ -42,13 +44,16 @@ The file is written atomically (temporary file + rename), so a failed write cann
 3. If windows were saved, all other tabs and windows are closed (`:tabonly`, `:only`) and each
    saved tab is rebuilt with its original split directions. Sizes are scaled to the current screen
    so the split ratios match, and the previously active tab and window are focused again. Windows
-   whose file no longer exists are dropped and the remaining splits fill their space. If the
-   sidebar was open, it is reopened in every tab.
-
-Which tab each buffer belongs to is not saved yet. After a restore, a buffer belongs to the tabs
-whose windows show it, and files that were not open before also belong to the first tab.
+   whose file no longer exists are dropped and the remaining splits fill their space. A tab whose
+   windows were all left out opens on its first buffer. If the sidebar was open, it is reopened in
+   every tab.
+4. Each tab gets its saved name and exactly its saved buffers, in the saved order. The other
+   buffers, including those you already had open, are listed under `Unassigned`.
 
 Restoring **adds** buffers; buffers you already have open stay open.
+
+Sessions saved by older versions of pile have no tab groups. For them, a buffer belongs to the tabs
+whose windows show it after the restore, and the other files also belong to the first tab.
 
 ## Automatic save and restore
 
@@ -82,6 +87,6 @@ Session names complete with `<Tab>` for `Restore`, `Switch` and `Delete`.
 ## Notes
 
 - Changing the order (`<C-j>`, `p`, `:PileSort` ...) rewrites the current session's buffer list
-  immediately; the windows are recorded again on the next save.
+  immediately; the windows and tab groups are recorded again on the next save.
 - Renaming a file with `e` updates its path in every session of the project.
 - Files that no longer exist are skipped on restore and dropped on the next save.

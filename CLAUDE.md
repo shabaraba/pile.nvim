@@ -35,13 +35,14 @@ lua/pile/
 ├── icons.lua          # File icon lookup (mini.icons / nvim-web-devicons)
 ├── git_status.lua     # Async `git status --porcelain` cache per repository
 ├── window_colors.lua  # Color assignment for window indicators
+├── tab_names.lua      # Tab names in the tab-local variable `pile_name`
 ├── buffers/
 │   ├── init.lua       # Buffer list, aliases, open in window, next/prev navigation
 │   ├── filter.lua     # Listed/unlisted filtering, exclude/include rules
 │   └── disambiguate.lua # Path prefixes for buffers sharing a file name
 ├── features/
 │   ├── aliases.lua    # Aliases follow buffer renames; :PilePruneAliases
-│   ├── session.lua    # Save/restore buffers and window layout
+│   ├── session/       # Save/restore buffers, window layout and tab groups (names, members, order)
 │   ├── reorder.lua    # Persisted custom buffer order
 │   ├── register.lua   # Sidebar cut/yank/paste register
 │   ├── sort.lua       # :PileSort keys
@@ -62,7 +63,8 @@ lua/pile/
         ├── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
         ├── marks.lua    # Right-aligned unsaved/git status marks
         ├── status_watch.lua # Autocmds that refresh modified/git state
-        └── edit_mode.lua  # Editable sidebar for aliases (a) and file renames (e)
+        ├── edit_mode.lua  # Editable sidebar for aliases/tab names (a) and file renames (e)
+        └── edit_apply.lua # Applies the edited aliases, paths and tab names
 ```
 
 ### Key Design Patterns

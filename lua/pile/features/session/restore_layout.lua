@@ -68,23 +68,38 @@ local function restore_tab(tree)
   return focused or vim.api.nvim_get_current_win()
 end
 
+--- The tab's saved splits, or a window on its first buffer when it had no window to save
+local function tree_of(saved_tab, buffer_map)
+  if type(saved_tab.tree) == 'table' then
+    return resolve_tree(saved_tab.tree, buffer_map)
+  end
+  for _, path in ipairs(type(saved_tab.buffers) == 'table' and saved_tab.buffers or {}) do
+    local tree = resolve_tree({ type = 'leaf', bufpath = path }, buffer_map)
+    if tree then
+      return tree
+    end
+  end
+end
+
 --- Restore window layout
 --- Rebuilds the saved tabs and split trees and scales the saved sizes to the
 --- current screen.
 --- @param saved table|nil Layout information from capture.window_layout()
 --- @param buffer_map table|nil Mapping from file path to buffer handle
+--- @return table[] restored {tab, entry}: each rebuilt tab and the saved tab it came from
 return function(saved, buffer_map)
   if not buffer_map or type(buffer_map) ~= 'table' then
     log.debug("Invalid buffer_map provided to restore_window_layout")
-    return
+    return {}
   end
 
   local saved_tabs, saved_current = capture.layout_tabs(saved)
-  local trees, current_index = {}, nil
-  for i, saved_tree in ipairs(saved_tabs) do
-    local tree = type(saved_tree) == 'table' and resolve_tree(saved_tree, buffer_map)
+  local trees, entries, current_index = {}, {}, nil
+  for i, saved_tab in ipairs(saved_tabs) do
+    local tree = tree_of(saved_tab, buffer_map)
     if tree then
       table.insert(trees, tree)
+      table.insert(entries, saved_tab)
       if i == saved_current then
         current_index = #trees
       end
@@ -92,7 +107,7 @@ return function(saved, buffer_map)
   end
   if #trees == 0 then
     log.debug("No layout to restore or invalid layout type")
-    return
+    return {}
   end
 
   -- The sidebar must not be the window that survives :only
@@ -110,13 +125,14 @@ return function(saved, buffer_map)
     vim.cmd('only')
   end
 
-  local focused = {}
+  local focused, restored = {}, {}
   for i, tree in ipairs(trees) do
     if i > 1 then
       -- :tab split reuses the current buffer instead of creating an empty one
       vim.cmd('tab split')
     end
     focused[i] = restore_tab(tree)
+    restored[i] = { tab = vim.api.nvim_get_current_tabpage(), entry = entries[i] }
   end
 
   local target = focused[current_index or 1]
@@ -130,4 +146,5 @@ return function(saved, buffer_map)
       vim.api.nvim_set_current_win(target)
     end
   end
+  return restored
 end
