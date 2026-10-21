@@ -66,33 +66,77 @@ function M.rows(groups)
   return rows
 end
 
---- Apply a new order of one group to the whole buffer list
---- The group's buffers are placed together, in their new order, where the
---- first of them stood; the other buffers keep their positions.
---- @param buffer_list table[] Whole list, in stored order
---- @param old_group table[] Buffers of the group before the change
---- @param new_group table[] Buffers of the group after the change (may add or drop some)
---- @return table[]
-function M.merge_order(buffer_list, old_group, new_group)
-  local in_group = {}
-  for _, buffer in ipairs(old_group) do
-    in_group[buffer.name] = true
-  end
-  for _, buffer in ipairs(new_group) do
-    in_group[buffer.name] = true
-  end
-
-  local result, placed = {}, false
-  for _, buffer in ipairs(buffer_list) do
-    if not in_group[buffer.name] then
-      table.insert(result, buffer)
-    elseif not placed then
-      vim.list_extend(result, new_group)
-      placed = true
+--- @return number|nil Row of `buf` in the group of `tab`, else the first buffer row
+function M.find_row(rows, buf, tab)
+  local first
+  for i, row in ipairs(rows) do
+    if row.buffer then
+      if row.buffer.buf == buf and row.group.tab == tab then
+        return i
+      end
+      first = first or i
     end
   end
-  if not placed then
-    vim.list_extend(result, new_group)
+  return first
+end
+
+local function name_set(list)
+  local set = {}
+  for _, buffer in ipairs(list) do
+    set[buffer.name] = true
+  end
+  return set
+end
+
+--- Apply a new order of one group to the whole buffer list
+--- The group's buffers are permuted among the positions they already hold, so
+--- buffers outside the group, and the order of every other group, stay as
+--- they were. A buffer new to the group goes right after the buffer it
+--- follows in the group (or before the first one).
+--- @param buffer_list table[] Whole list, in stored order
+--- @param old_group table[] Buffers of the group before the change
+--- @param new_group table[] Buffers of the group after the change (may add some)
+--- @return table[]
+function M.merge_order(buffer_list, old_group, new_group)
+  local in_old = name_set(old_group)
+  local in_new = name_set(new_group)
+
+  -- Putting a buffer the group already has moves it: its last occurrence wins
+  local last_index = {}
+  for i, buffer in ipairs(new_group) do
+    last_index[buffer.name] = i
+  end
+  local deduped = {}
+  for i, buffer in ipairs(new_group) do
+    if last_index[buffer.name] == i then
+      table.insert(deduped, buffer)
+    end
+  end
+
+  -- One chunk per position the group holds: a kept buffer and the new ones after it
+  local chunks, leading = {}, {}
+  for _, buffer in ipairs(deduped) do
+    if in_old[buffer.name] then
+      table.insert(chunks, { buffer })
+    else
+      table.insert(chunks[#chunks] or leading, buffer)
+    end
+  end
+  if chunks[1] then
+    chunks[1] = vim.list_extend(leading, chunks[1])
+  end
+
+  local result, slot = {}, 0
+  for _, buffer in ipairs(buffer_list) do
+    if in_old[buffer.name] then
+      slot = slot + 1
+      vim.list_extend(result, chunks[slot] or {})
+    elseif not in_new[buffer.name] then
+      table.insert(result, buffer)
+    end
+  end
+  if slot == 0 then
+    vim.list_extend(result, leading)
   end
   return result
 end

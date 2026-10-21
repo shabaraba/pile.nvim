@@ -99,9 +99,10 @@ The sidebar has its own register, separate from Vim registers. It holds buffers,
 Moves stay within one group: a buffer does not move past the first or last line of its group, and
 a visual selection spanning two groups does not move.
 
-The stored order is one list for all groups. After a move, the buffers of that group are stored
-together, in their new order, where the first of them was; the other buffers keep their places.
-With a single tab this is the same as moving within the whole list.
+The stored order is one list for all groups. A move swaps places only among the buffers of that
+group, so buffers outside it keep their places and other groups keep their order. A put buffer is
+stored right after the buffer it follows in the group. With a single tab this is the same as moving
+within the whole list.
 
 Every change of order is written to the current session immediately. Buffers that have no stored
 position yet (for example a file you just opened) are appended at the bottom.

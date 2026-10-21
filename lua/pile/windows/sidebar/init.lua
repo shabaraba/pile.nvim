@@ -36,8 +36,6 @@ local function create_buffer()
     end,
     desc = "Clear pile register when leaving sidebar"
   })
-
-  preview.attach(M)
 end
 
 local function refresh()
@@ -75,9 +73,16 @@ function M.open()
 
   M._is_opening = true
   opened = true
+  local current_buf = vim.api.nvim_get_current_buf()
   create_buffer()
-  wins.open(globals.sidebar_buf)
+  local win = wins.open(globals.sidebar_buf)
   refresh()
+  -- Line 1 is always a header
+  local line = groups.find_row(rows, current_buf, vim.api.nvim_get_current_tabpage())
+  if line then
+    vim.api.nvim_win_set_cursor(win, { line, 0 })
+  end
+  preview.attach(M)
   M._is_opening = false
   status_watch.refresh_git()
 end
