@@ -26,7 +26,7 @@ function M.setup(sidebar, group)
     group = group,
     callback = vim.schedule_wrap(function()
       show_in_current_tab(sidebar)
-      sidebar.update()
+      sidebar.schedule_update()
     end),
   })
 

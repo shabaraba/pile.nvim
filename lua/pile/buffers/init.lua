@@ -106,11 +106,7 @@ end
 
 --- Cycles within the current tab's group
 local function switch_buffer(offset)
-  local group = groups.current(groups.build(M.get_list()))
-  if not group then
-    return
-  end
-  local buffer_list = group.buffers
+  local buffer_list = groups.of_tab(M.get_list())
   local current_buf = M.get_current()
   for i, buffer in ipairs(buffer_list) do
     if buffer.buf == current_buf then

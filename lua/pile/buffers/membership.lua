@@ -15,13 +15,13 @@ function M.has(tab, buf)
   return members[tab] ~= nil and members[tab][buf] == true
 end
 
-function M.remove_buffer(buf)
+local function remove_buffer(buf)
   for _, bufs in pairs(members) do
     bufs[buf] = nil
   end
 end
 
-function M.prune_tabs()
+local function prune_tabs()
   for tab in pairs(members) do
     if not vim.api.nvim_tabpage_is_valid(tab) then
       members[tab] = nil
@@ -63,13 +63,13 @@ function M.setup(group)
   vim.api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
     group = group,
     callback = function(ev)
-      M.remove_buffer(ev.buf)
+      remove_buffer(ev.buf)
     end,
   })
 
   vim.api.nvim_create_autocmd("TabClosed", {
     group = group,
-    callback = M.prune_tabs,
+    callback = prune_tabs,
   })
 end
 

@@ -12,18 +12,30 @@ local function in_tab(buffer, tab)
   return vim.tbl_extend('force', buffer, { window_ids = window_ids })
 end
 
+--- Buffers that belong to `tab`, in list order, with only that tab's windows
+--- @param buffer_list table[] Entries from buffers.get_list()
+--- @param tab number|nil Tabpage; defaults to the current tab
+--- @return table[]
+function M.of_tab(buffer_list, tab)
+  tab = tab or vim.api.nvim_get_current_tabpage()
+  local result = {}
+  for _, buffer in ipairs(buffer_list) do
+    if membership.has(tab, buffer.buf) then
+      table.insert(result, in_tab(buffer, tab))
+    end
+  end
+  return result
+end
+
 --- @param buffer_list table[] Entries from buffers.get_list()
 --- @return table[] groups {tab, label, buffers}; the unassigned group has no tab and is left out when empty
 function M.build(buffer_list)
   local groups, assigned = {}, {}
 
   for number, tab in ipairs(vim.api.nvim_list_tabpages()) do
-    local group = { tab = tab, label = 'Tab ' .. number, buffers = {} }
-    for _, buffer in ipairs(buffer_list) do
-      if membership.has(tab, buffer.buf) then
-        table.insert(group.buffers, in_tab(buffer, tab))
-        assigned[buffer.buf] = true
-      end
+    local group = { tab = tab, label = 'Tab ' .. number, buffers = M.of_tab(buffer_list, tab) }
+    for _, buffer in ipairs(group.buffers) do
+      assigned[buffer.buf] = true
     end
     table.insert(groups, group)
   end
@@ -39,16 +51,6 @@ function M.build(buffer_list)
   end
 
   return groups
-end
-
---- @return table|nil Group of the current tab
-function M.current(groups)
-  local tab = vim.api.nvim_get_current_tabpage()
-  for _, group in ipairs(groups) do
-    if group.tab == tab then
-      return group
-    end
-  end
 end
 
 --- One row per sidebar line: a group header, or a buffer of that group

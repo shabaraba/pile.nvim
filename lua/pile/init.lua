@@ -198,12 +198,12 @@ local function move_buffer(direction)
   local reorder = require('pile.features.reorder')
   local groups = require('pile.buffers.groups')
   local buffer_list = buffers.get_list()
-  local group = groups.current(groups.build(buffer_list)) or { buffers = {} }
+  local tab_buffers = groups.of_tab(buffer_list)
   local current_buf = buffers.get_current()
 
-  for i, buf in ipairs(group.buffers) do
+  for i, buf in ipairs(tab_buffers) do
     if buf.buf == current_buf then
-      if reorder.shift(buffer_list, group.buffers, i, direction == "up" and -1 or 1) then
+      if reorder.shift(buffer_list, tab_buffers, i, direction == "up" and -1 or 1) then
         sidebar.update()
         print("Buffer moved " .. direction)
         return

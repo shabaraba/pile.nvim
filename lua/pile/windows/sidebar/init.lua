@@ -165,7 +165,7 @@ function M.update()
   end
 
   refresh()
-  wins.fix_widths()
+  wins.fix_width()
 end
 
 require('pile.windows.sidebar.tab_watch').setup(M, augroup)
