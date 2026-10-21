@@ -51,6 +51,8 @@ local function setup_autocmds()
     end
   })
 
+  require("pile.features.aliases").follow_buffer_renames(group, sidebar.schedule_update)
+
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = group,
     pattern = "*",
@@ -232,6 +234,12 @@ function M.sort_buffers(opts)
   reorder.save_buffer_order(sorted)
   sidebar.update()
   print("Sorted buffers by " .. opts.args .. (opts.bang and " (reversed)" or ""))
+end
+
+function M.prune_aliases()
+  local count = require('pile.features.aliases').prune()
+  sidebar.update()
+  print("Removed " .. count .. " display name(s) of missing files")
 end
 
 -- Public functions work without an explicit setup(): the first call initializes pile

@@ -186,6 +186,7 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | `:PileSwitchSession {name}` | Save the current session, then make `name` current and restore it |
 | `:PileDeleteSession {name}` | Delete a session (not the current one, and never `default`) |
 | `:PileListSessions` | List sessions; `*` marks the current one |
+| `:PilePruneAliases` | Remove display names of files that no longer exist |
 
 ### Sidebar keymaps
 

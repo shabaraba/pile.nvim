@@ -39,6 +39,10 @@ local commands = {
     { nargs = 1, complete = complete_sessions, desc = "delete session" },
   },
   PileListSessions = { call("list_sessions"), { desc = "list all sessions" } },
+  PilePruneAliases = {
+    call("prune_aliases"),
+    { desc = "remove display names of files that no longer exist" },
+  },
   PileMoveBufferUp = { call("move_buffer_up"), { desc = "move current buffer up in sidebar" } },
   PileMoveBufferDown = { call("move_buffer_down"), { desc = "move current buffer down in sidebar" } },
   PileSort = {
