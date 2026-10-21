@@ -26,11 +26,7 @@ function M.buffers()
       table.insert(buffers, { buf = buf, path = name, name = name })
     end
   end
-  local reorder = require('pile.features.reorder')
-  if reorder.is_enabled() then
-    buffers = reorder.sort_buffers_by_session_order(buffers)
-  end
-  return buffers
+  return require('pile.features.reorder').in_stored_order(buffers)
 end
 
 --- Collect the split layout, name and buffers of every tab
@@ -38,13 +34,13 @@ end
 --- restore can rebuild the same tabs, horizontal/vertical splits and proportions.
 --- Windows without a saveable file (sidebar, terminals, help) are left out, and
 --- so are tabs that hold neither such a window nor a saveable buffer.
+--- @param buffers table[] From M.buffers()
 --- @return table|nil Layout {version = 4, tabs = {{tree, name, buffers}...}, current_tab} or nil if no tab qualifies
-function M.window_layout()
+function M.window_layout(buffers)
   local current_tab = vim.api.nvim_get_current_tabpage()
   local is_excluded = function(win)
     return not M.is_saveable(vim.api.nvim_win_get_buf(win))
   end
-  local buffer_list = require('pile.buffers').get_list()
 
   local tabs, current_index = {}, nil
   for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
@@ -70,7 +66,7 @@ function M.window_layout()
     end
 
     local tree = layout.capture(is_excluded, tab)
-    local entry = tab_groups.capture(tab, buffer_list, M.is_saveable)
+    local entry = tab_groups.capture(tab, buffers)
     if tree or #entry.buffers > 0 then
       entry.tree = tree and serialize(tree)
       table.insert(tabs, entry)
@@ -86,6 +82,21 @@ function M.window_layout()
   return { version = 4, tabs = tabs, current_tab = current_index }
 end
 
+--- A saved tab whose fields are each of the expected type or nil
+local function normalize_tab(tab)
+  if type(tab) ~= 'table' then
+    return {}
+  end
+  if tab.type then
+    return { tree = tab }
+  end
+  return {
+    tree = type(tab.tree) == 'table' and tab.tree or nil,
+    name = type(tab.name) == 'string' and tab.name or nil,
+    buffers = type(tab.buffers) == 'table' and tab.buffers or nil,
+  }
+end
+
 --- Convert a saved layout into a list of tabs {tree, name, buffers}, accepting older formats
 --- version 3 stored only each tab's tree; version 2 a single tree for the
 --- current tab; sessions written before split trees were stored hold a plain
@@ -99,8 +110,7 @@ function M.layout_tabs(saved)
   if type(saved.tabs) == 'table' then
     local tabs = {}
     for i, tab in ipairs(saved.tabs) do
-      local valid = type(tab) == 'table'
-      tabs[i] = valid and (tab.type and { tree = tab } or tab) or {}
+      tabs[i] = normalize_tab(tab)
     end
     return tabs, tonumber(saved.current_tab)
   end
@@ -124,7 +134,7 @@ end
 function M.count_windows(saved)
   local count = 0
   for _, tab in ipairs((M.layout_tabs(saved))) do
-    if type(tab.tree) == 'table' and tab.tree.type then
+    if tab.tree and tab.tree.type then
       count = count + #layout.leaves(tab.tree)
     end
   end

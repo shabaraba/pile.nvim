@@ -5,16 +5,12 @@ local tab_names = require('pile.tab_names')
 
 local M = {}
 
---- @param buffer_list table[] From buffers.get_list()
---- @param is_saveable fun(buf: number): boolean
+--- @param buffers table[] Saveable buffers {buf, name}, in stored order
 --- @return table {name, buffers = paths}
-function M.capture(tab, buffer_list, is_saveable)
-  local paths = {}
-  for _, buffer in ipairs(groups.of_tab(buffer_list, tab)) do
-    if is_saveable(buffer.buf) then
-      table.insert(paths, buffer.name)
-    end
-  end
+function M.capture(tab, buffers)
+  local paths = vim.tbl_map(function(buffer)
+    return buffer.name
+  end, groups.of_tab(buffers, tab))
   return { name = tab_names.get(tab), buffers = paths }
 end
 
@@ -27,7 +23,7 @@ end
 function M.apply(restored, buffer_map)
   for _, item in ipairs(restored) do
     tab_names.set(item.tab, item.entry.name)
-    if type(item.entry.buffers) == 'table' then
+    if item.entry.buffers then
       local bufs = {}
       for _, path in ipairs(item.entry.buffers) do
         if buffer_map[path] then

@@ -1,13 +1,17 @@
 --- Tab operations on the header line of a tab group
 local M = {}
 
-local function run(tab, command)
-  if not vim.api.nvim_tabpage_is_valid(tab) then
-    return
-  end
-  local ok, err = pcall(vim.cmd, command(vim.api.nvim_tabpage_get_number(tab)))
+--- @return boolean ok
+local function report(ok, err)
   if not ok then
     vim.notify(err:match('E%d+:.*') or err, vim.log.levels.ERROR)
+  end
+  return ok
+end
+
+local function run(tab, command)
+  if vim.api.nvim_tabpage_is_valid(tab) then
+    report(pcall(vim.cmd, command(vim.api.nvim_tabpage_get_number(tab))))
   end
 end
 
@@ -37,10 +41,11 @@ function M.move(tab, step)
   end
   -- :tabmove moves only the current tab; visiting it without autocmds leaves focus and sidebars alone
   local current = vim.api.nvim_get_current_tabpage()
-  vim.cmd('noautocmd ' .. number .. 'tabnext')
-  vim.cmd('tabmove ' .. (step > 0 and '+1' or '-1'))
-  vim.cmd('noautocmd ' .. vim.api.nvim_tabpage_get_number(current) .. 'tabnext')
-  return true
+  return report(pcall(function()
+    vim.cmd('noautocmd ' .. number .. 'tabnext')
+    vim.cmd('tabmove ' .. (step > 0 and '+1' or '-1'))
+    vim.cmd('noautocmd ' .. vim.api.nvim_tabpage_get_number(current) .. 'tabnext')
+  end))
 end
 
 return M

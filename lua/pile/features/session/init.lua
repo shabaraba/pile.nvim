@@ -21,8 +21,8 @@ function M.save_current_buffers(session_name)
     return false
   end
 
-  local window_layout = capture.window_layout()
-  local ok = session_store.save_session(session_name, buffers, window_layout or {})
+  local window_layout = capture.window_layout(buffers)
+  local ok = session_store.save_session(session_name, buffers, window_layout)
   if ok then
     log.debug(string.format("Saved %d buffers and %d windows to session '%s'",
       #buffers, capture.count_windows(window_layout), session_name))

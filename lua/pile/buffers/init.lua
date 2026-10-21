@@ -71,12 +71,7 @@ function M.get_list()
     log.debug(string.format("[%d] buf: %d, filename: %s", i, buffer.buf, buffer.filename))
   end
 
-  local reorder = require('pile.features.reorder')
-  if reorder.is_enabled() then
-    buffer_list = reorder.sort_buffers_by_session_order(buffer_list)
-  end
-
-  return buffer_list
+  return require('pile.features.reorder').in_stored_order(buffer_list)
 end
 
 function M.get_current()
