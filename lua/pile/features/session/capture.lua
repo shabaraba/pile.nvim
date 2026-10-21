@@ -15,15 +15,19 @@ function M.is_saveable(buf)
     and vim.bo[buf].buftype == ''
 end
 
---- Collect all buffers that should be saved in the session
---- @return table List of buffer information {path, name}
+--- Collect all buffers that should be saved in the session, in the stored order
+--- @return table List of buffer information {buf, path, name}
 function M.buffers()
   local buffers = {}
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if M.is_saveable(buf) then
       local name = vim.api.nvim_buf_get_name(buf)
-      table.insert(buffers, { path = name, name = name })
+      table.insert(buffers, { buf = buf, path = name, name = name })
     end
+  end
+  local reorder = require('pile.features.reorder')
+  if reorder.is_enabled() then
+    buffers = reorder.sort_buffers_by_session_order(buffers)
   end
   return buffers
 end
