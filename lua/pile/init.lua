@@ -51,9 +51,7 @@ local function setup_autocmds()
     end
   })
 
-  require("pile.features.aliases").follow_buffer_renames(group, function()
-    sidebar.schedule_update()
-  end)
+  require("pile.features.aliases").follow_buffer_renames(group, sidebar.schedule_update)
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = group,

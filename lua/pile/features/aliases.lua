@@ -38,7 +38,7 @@ function M.follow_buffer_renames(group, on_change)
       local from = names_before_rename[ev.buf]
       names_before_rename[ev.buf] = nil
       local to = vim.api.nvim_buf_get_name(ev.buf)
-      if from and from ~= '' and to ~= '' and from ~= to and is_stored(from) then
+      if from and to ~= '' and from ~= to and is_stored(from) then
         session_store.rename_paths({ [from] = to })
         on_change()
       end
@@ -54,14 +54,14 @@ function M.prune()
     open[vim.api.nvim_buf_get_name(buf)] = true
   end
 
-  local removed = {}
+  local removed, count = {}, 0
   for path in pairs(session_store.get_aliases()) do
     if not open[path] and not uv.fs_stat(path) then
       removed[path] = false
+      count = count + 1
     end
   end
 
-  local count = vim.tbl_count(removed)
   if count > 0 then
     session_store.update_aliases(removed)
   end

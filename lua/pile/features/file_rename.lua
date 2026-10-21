@@ -1,4 +1,3 @@
-local session_store = require('pile.storage.session_store')
 local log = require('pile.log')
 
 local uv = vim.uv or vim.loop
@@ -112,24 +111,23 @@ local function rename_one(change)
 end
 
 --- Rename files on disk and their buffers, letting language servers update references
---- Expects changes that already passed M.validate(). Stored order and aliases follow the new paths.
+--- Expects changes that already passed M.validate(). Stored order and aliases follow the
+--- renamed buffers through the BufFilePost hook in features/aliases.lua.
 --- @param changes { buf: number, from: string, to: string }[]
 --- @return string|nil error
 function M.apply(changes)
   lsp_will_rename(to_lsp_files(changes))
 
-  local renamed, renamed_paths, err = {}, {}, nil
+  local renamed, err = {}, nil
   for _, change in ipairs(changes) do
     err = rename_one(change)
     if err then
       break
     end
     table.insert(renamed, change)
-    renamed_paths[change.from] = change.to
   end
 
   if #renamed > 0 then
-    session_store.rename_paths(renamed_paths)
     lsp_did_rename(to_lsp_files(renamed))
   end
   return err
