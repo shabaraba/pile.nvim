@@ -18,7 +18,7 @@ pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: re
 - **Buffer sidebar** — lists the same buffers as `:ls`, highlights the current one, and opens a
   buffer in the window you pick
 - **Grouped by tab** — buffers are listed under the tab they were opened in, and the sidebar is
-  shown in every tab
+  shown in every tab; cut, yank and put move or share buffers between tabs
 - **Vim-like reordering** — `dd` / `yy` / `p` / `P`, `<C-j>` / `<C-k>`, visual-mode selections,
   and `:PileSort`
 - **Per-project sessions** — the buffer list and its order are saved on exit and restored on
@@ -181,7 +181,7 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | `:PileToggle` | Open or close the sidebar in every tab |
 | `:PileGoToNextBuffer` / `:PileGoToPrevBuffer` | Go to the next / previous buffer of the current tab's group (wraps around) |
 | `:PileMoveBufferUp` / `:PileMoveBufferDown` | Move the current buffer one position within the current tab's group |
-| `:PileSort[!] {key}` | Sort once by `name`, `path`, `extension`, `filetype` or `recent`; `!` reverses |
+| `:PileSort[!] {key}` | Sort every group once by `name`, `path`, `extension`, `filetype` or `recent`; `!` reverses |
 | `:PileSaveSession [name]` | Save the buffer list to the current session, or to `name` |
 | `:PileRestoreSession [name]` | Load the buffers and windows of the current session, or of `name` |
 | `:PileCreateSession {name}` | Save the buffer list as a new session (does not switch to it) |
@@ -196,11 +196,11 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | --- | --- | --- |
 | `<CR>` | n | Open the buffer (asks which window when there are several) |
 | `K` | n | Toggle the floating preview |
-| `dd` / `d` | n / x | Cut: close the buffer(s) and keep them in pile's register |
+| `dd` / `d` | n / x | Cut: take the buffer(s) out of that tab and keep them in pile's register; a buffer left in no tab is closed |
 | `yy` / `y` | n / x | Yank the buffer(s) into pile's register |
-| `p` / `P` | n | Put the register below / above the cursor |
+| `p` / `P` | n | Put the register below / above the cursor; the buffers join that group's tab |
 | `D` | n | Close the buffer immediately, **discarding unsaved changes** |
-| `<C-j>` / `<C-k>` | n, x | Move the buffer(s) down / up |
+| `<C-j>` / `<C-k>` | n, x | Move the buffer(s) down / up; past the end of a group, into the adjacent group |
 | `<CR>` | n | On a tab header: go to that tab |
 | `o` / `O` | n | On a tab header: create a tab after / before it |
 | `D` | n | On a tab header: close that tab (its buffers move to `Unassigned`; the last tab stays) |
@@ -210,7 +210,15 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 Close the sidebar with `:PileToggle` or `:close`; either closes it in every tab. The register is
 cleared when you leave the sidebar window. On a tab header line, `<CR>`, `o` / `O` and `D` act on
 the tab (not on the `Unassigned` header), the other keys that act on a buffer do nothing, and
-`p` / `P` put at the top of that group. Moving with `<C-j>` / `<C-k>` stays within a group.
+`p` / `P` put at the top of that group.
+
+Each line is a buffer in one tab. `yy` → another tab's group → `p` shares the buffer with that tab;
+`dd` → another tab's group → `p` moves it there. Putting into `Unassigned` takes it out of every
+tab. Each tab group keeps its own order.
+
+> [!NOTE]
+> `dd` used to close the buffer every time. It now closes it only when the buffer belongs to no
+> other tab; otherwise it only leaves the tab, and that tab's windows switch to another buffer.
 
 ### Highlight groups
 

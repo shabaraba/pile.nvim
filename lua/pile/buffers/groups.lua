@@ -12,18 +12,32 @@ local function in_tab(buffer, tab)
   return vim.tbl_extend('force', buffer, { window_ids = window_ids })
 end
 
---- Buffers that belong to `tab`, in list order, with only that tab's windows
+--- Buffers that belong to `tab`, with only that tab's windows
+--- Ranked buffers come first in the tab's own order, the rest follow in list order.
 --- @param buffer_list table[] Entries from buffers.get_list()
 --- @param tab number|nil Tabpage; defaults to the current tab
 --- @return table[]
 function M.of_tab(buffer_list, tab)
   tab = tab or vim.api.nvim_get_current_tabpage()
-  local result = {}
+  local result, position = {}, {}
   for _, buffer in ipairs(buffer_list) do
     if membership.has(tab, buffer.buf) then
       table.insert(result, in_tab(buffer, tab))
+      position[buffer.buf] = #result
     end
   end
+  local order = membership.order_of(tab)
+  if not order or next(order) == nil then
+    return result
+  end
+  table.sort(result, function(a, b)
+    local rank_a = order[a.buf] or math.huge
+    local rank_b = order[b.buf] or math.huge
+    if rank_a ~= rank_b then
+      return rank_a < rank_b
+    end
+    return position[a.buf] < position[b.buf]
+  end)
   return result
 end
 

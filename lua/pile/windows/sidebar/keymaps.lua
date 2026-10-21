@@ -1,7 +1,7 @@
 local globals = require 'pile.globals'
 local register = require 'pile.features.register'
-local reorder = require 'pile.features.reorder'
-local membership = require 'pile.buffers.membership'
+local transfer = require 'pile.features.transfer'
+local groups = require 'pile.buffers.groups'
 local preview = require 'pile.windows.preview'
 local tab_actions = require 'pile.windows.sidebar.tab_actions'
 local wins = require 'pile.windows.sidebar.wins'
@@ -47,19 +47,16 @@ function M.setup(sidebar)
     require('pile.windows.sidebar.edit_mode').enter(sidebar, 'file')
   end, "Edit file paths")
 
-  local buffer_at_cursor = sidebar.get_buffer_at_cursor
+  local function row_at_cursor()
+    local row = sidebar.get_row_at_cursor()
+    return row and row.buffer and row or nil
+  end
 
-  -- Headers are skipped, and a buffer selected in several groups counts once
-  local function selected_buffers()
+  local function selected_rows()
     local from_line, to_line = get_visual_range()
-    local selected, seen = {}, {}
-    for _, row in ipairs(vim.list_slice(sidebar.get_rows(), from_line, to_line)) do
-      if row.buffer and not seen[row.buffer.buf] then
-        seen[row.buffer.buf] = true
-        table.insert(selected, row.buffer)
-      end
-    end
-    return selected
+    return vim.tbl_filter(function(row)
+      return row.buffer ~= nil
+    end, vim.list_slice(sidebar.get_rows(), from_line, to_line))
   end
 
   -- On a header, both p and P put at the top of its group
@@ -73,47 +70,37 @@ function M.setup(sidebar)
     if not row then
       return
     end
-    local group = row.group
-    local count = register.get_count()
-    local position = row.index and row.index + offset or 0
-    local new_group = register.paste(position, group.buffers)
-    if group.tab then
-      for _, buffer in ipairs(new_group) do
-        membership.add(group.tab, buffer.buf)
-      end
-    end
-    reorder.save_group_order(sidebar.get_buffer_list(), group.buffers, new_group)
+    local entries = register.paste()
+    transfer.place(row.group, entries, row.index and row.index + offset or 0, sidebar.get_buffer_list())
     sidebar.update()
-    print(string.format("Pasted %d buffer(s)", count))
+    print(string.format("Pasted %d buffer(s)", #entries))
+  end
+
+  -- Only buffers within one group move; past its ends they go to the adjacent group
+  local function move_rows(from_line, to_line, step)
+    local rows = sidebar.get_rows()
+    local group = transfer.shift_rows(rows, from_line, to_line, step, sidebar.get_buffer_list())
+    if not group then
+      return nil
+    end
+    sidebar.update()
+    return groups.find_row(sidebar.get_rows(), rows[from_line].buffer.buf, group.tab)
   end
 
   local function move_line(step)
-    local row = sidebar.get_row_at_cursor()
-    if row and row.buffer and reorder.shift(sidebar.get_buffer_list(), row.group.buffers, row.index, step) then
-      local current_line = get_current_line()
-      sidebar.update()
-      vim.api.nvim_win_set_cursor(wins.get(), {current_line + step, 0})
+    local line = get_current_line()
+    local new_line = move_rows(line, line, step)
+    if new_line then
+      vim.api.nvim_win_set_cursor(wins.get(), {new_line, 0})
     end
   end
 
-  -- Only a selection of buffers within one group can move, and not past its ends
   local function move_selection(direction)
     local from_line, to_line = get_visual_range()
-    local rows = sidebar.get_rows()
-    local first, last = rows[from_line], rows[to_line]
-    if not (first and last and first.buffer and last.buffer and first.group == last.group) then
-      return
+    local new_line = move_rows(from_line, to_line, direction == "down" and 1 or -1)
+    if new_line then
+      restore_visual_selection(new_line, new_line + to_line - from_line)
     end
-    local group_buffers = first.group.buffers
-    local step = direction == "down" and 1 or -1
-    if first.index + step < 1 or last.index + step > #group_buffers then
-      return
-    end
-
-    local moved = reorder.move_range(first.index, last.index, direction, group_buffers)
-    reorder.save_group_order(sidebar.get_buffer_list(), group_buffers, moved)
-    sidebar.update()
-    restore_visual_selection(from_line + step, to_line + step)
   end
 
   -- The "Unassigned" header has no tab and takes no tab action
@@ -142,31 +129,29 @@ function M.setup(sidebar)
   end, "Open buffer")
 
   set_keymap('n', 'dd', function()
-    local buffer = buffer_at_cursor()
-    if buffer then
-      register.cut({buffer})
+    local row = row_at_cursor()
+    if row then
+      register.cut({row})
       sidebar.update()
     end
   end, "Cut buffer")
 
   set_keymap('x', 'd', function()
-    register.cut(selected_buffers())
+    register.cut(selected_rows())
     sidebar.update()
     exit_visual_mode()
   end, "Cut selection")
 
   set_keymap('n', 'yy', function()
-    local buffer = buffer_at_cursor()
-    if buffer then
-      register.yank({buffer})
+    local row = row_at_cursor()
+    if row then
+      register.yank({row})
       print("Yanked 1 buffer")
     end
   end, "Yank buffer")
 
   set_keymap('x', 'y', function()
-    local selected = selected_buffers()
-    register.yank(selected)
-    print(string.format("Yanked %d buffer(s)", #selected))
+    print(string.format("Yanked %d buffer(s)", register.yank(selected_rows())))
     exit_visual_mode()
   end, "Yank selection")
 
@@ -177,7 +162,7 @@ function M.setup(sidebar)
     if on_header(tab_actions.close) then
       return
     end
-    local buffer = buffer_at_cursor()
+    local buffer = sidebar.get_buffer_at_cursor()
     if buffer then
       vim.api.nvim_buf_delete(buffer.buf, { force = true })
       sidebar.update()

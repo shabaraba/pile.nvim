@@ -154,7 +154,8 @@ debug.level             "error", "warn", "info", "debug" or "trace".
                         current tab's group.
 
                                                                    *:PileSort*
-:PileSort[!] {key}      Sort once and store the result as the custom order.
+:PileSort[!] {key}      Sort every group once and store the result as the
+                        custom order.
                         {key} is "name", "path", "extension", "filetype" or
                         "recent" (most recently used first). [!] reverses.
 
@@ -206,7 +207,15 @@ buffer belongs to a tab once it is added to the buffer list or entered in
 that tab, and stays there when no window shows it any more. A buffer can
 belong to several tabs and then appears in each group. When a tab is closed,
 buffers that belonged only to it are kept under "Unassigned" at the end.
-Each group follows the stored order of the whole list.
+
+Each line is a buffer in one tab: cut, yank, put and moves act on that tab's
+membership. "yy", then "p" in another tab's group, shares the buffer with
+that tab; "dd", then "p" there, moves it. Putting into "Unassigned" takes the
+buffers out of every tab. A buffer the group already has moves instead of
+appearing twice.
+
+Each tab group keeps its own order; "Unassigned" follows the stored order of
+the whole list. The tab groups' own orders are not saved in the session.
 
                                                        *pile-sidebar-keymaps*
 On a tab header line, these keys act on the tab:
@@ -224,14 +233,18 @@ do nothing on a header line, and `p` / `P` put at the top of that group.
             made.
 K           Toggle a floating preview that follows the cursor. Buffers not
             loaded yet are previewed without firing |BufRead|.
-dd    {x}d  Cut: wipe the buffer(s) and keep them in pile's register. Asks
-            to save unsaved changes first.
+dd    {x}d  Cut: take the buffer(s) out of the tab of the line and keep
+            them in pile's register. Windows of that tab showing the
+            buffer switch to another buffer of the tab. A buffer that
+            belongs to no tab any more is wiped; asks to save unsaved
+            changes first. Before tabs were grouped, "dd" always wiped.
 yy    {x}y  Yank the buffer(s) into pile's register.
 p     P     Put the register below / above the cursor. The buffers join
             the tab of that group.
 D           Wipe the buffer immediately. Unsaved changes are lost.
-<C-j> <C-k> Move the buffer (or visual selection) down / up within its
-            group.
+<C-j> <C-k> Move the buffer (or visual selection) down / up. Past the
+            first or last line of a group, it goes to the adjacent group,
+            leaving its tab as with "dd" and "p".
 a           Edit display names. See |pile-edit|.
 e           Edit file paths. See |pile-edit|.
 
