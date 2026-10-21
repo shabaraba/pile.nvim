@@ -1,16 +1,18 @@
 local globals = require 'pile.globals'
 local buffers = require 'pile.buffers'
+local groups = require 'pile.buffers.groups'
 local log = require 'pile.log'
 local preview = require 'pile.windows.preview'
 local render = require 'pile.windows.sidebar.render'
 local keymaps = require 'pile.windows.sidebar.keymaps'
 local status_watch = require 'pile.windows.sidebar.status_watch'
-local layout = require 'pile.windows.layout'
+local wins = require 'pile.windows.sidebar.wins'
 
 local uv = vim.uv or vim.loop
 
 local buffer_list = {}
-local SIDEBAR_WIDTH = 35
+local rows = {}
+local opened = false
 local augroup = vim.api.nvim_create_augroup("PileSidebar", { clear = true })
 local UPDATE_DEBOUNCE_MS = 20
 -- oil.nvim finishes its own buffer bookkeeping asynchronously after FileType,
@@ -20,59 +22,10 @@ local OIL_SETTLE_MS = 200
 local update_timer = nil
 local pending_delay = nil
 
--- Split layout around the last open, so close can restore the exact sizes
--- instead of re-scaling (and accumulating rounding drift) when nothing changed.
-local layout_before_open = nil
-local layout_after_open = nil
-
 local M = {}
 
-local function is_sidebar_win(win)
-  return win == globals.sidebar_win
-end
-
-local function create_sidebar()
-  local before = layout.capture()
-
+local function create_buffer()
   globals.sidebar_buf = vim.api.nvim_create_buf(false, true)
-  layout.without_equalalways(function()
-    vim.cmd('topleft ' .. SIDEBAR_WIDTH .. 'vsplit')
-  end)
-  globals.sidebar_win = vim.api.nvim_get_current_win()
-
-  vim.api.nvim_win_set_buf(globals.sidebar_win, globals.sidebar_buf)
-  vim.wo[globals.sidebar_win].winfixwidth = true
-  vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
-
-  -- The split takes its columns from the rightmost window; spread the loss
-  -- over all splits so their ratios stay as the user arranged them.
-  if before then
-    layout.apply(before, nil, is_sidebar_win)
-    vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
-  end
-  layout_before_open = before
-  layout_after_open = layout.capture(is_sidebar_win)
-end
-
-function M.get_buffer_list()
-  return buffer_list
-end
-
-function M.get_buffer_at_cursor()
-  return buffer_list[vim.api.nvim_win_get_cursor(globals.sidebar_win)[1]]
-end
-
-function M.open()
-  if M.is_opened() then
-    print("Sidebar already open.")
-    return
-  end
-
-  M._is_opening = true
-
-  create_sidebar()
-  buffer_list = buffers.get_list()
-  render.draw(buffer_list, buffers.get_current())
   keymaps.setup(M)
 
   vim.api.nvim_create_autocmd("WinLeave", {
@@ -85,39 +38,74 @@ function M.open()
   })
 
   preview.attach(M)
+end
 
+local function refresh()
+  buffer_list = buffers.get_list()
+  rows = groups.rows(groups.build(buffer_list))
+  render.draw(rows, vim.api.nvim_get_current_buf())
+end
+
+--- Whole buffer list in stored order (each buffer once)
+function M.get_buffer_list()
+  return buffer_list
+end
+
+--- One entry per sidebar line; see groups.rows()
+function M.get_rows()
+  return rows
+end
+
+function M.get_row_at_cursor()
+  local win = wins.get()
+  return win and rows[vim.api.nvim_win_get_cursor(win)[1]]
+end
+
+--- @return table|nil nil on a group header
+function M.get_buffer_at_cursor()
+  local row = M.get_row_at_cursor()
+  return row and row.buffer
+end
+
+function M.open()
+  if M.is_opened() then
+    print("Sidebar already open.")
+    return
+  end
+
+  M._is_opening = true
+  opened = true
+  create_buffer()
+  wins.open(globals.sidebar_buf)
+  refresh()
   M._is_opening = false
   status_watch.refresh_git()
 end
 
 function M.is_opened()
-  return globals.sidebar_win and vim.api.nvim_win_is_valid(globals.sidebar_win)
+  return opened
 end
 
 function M.close()
-  if M.is_opened() then
-    preview.close()
-
-    local current = layout.capture(is_sidebar_win)
-    local source = current
-    if layout_before_open and vim.deep_equal(current, layout_after_open) then
-      source = layout_before_open
-    end
-    layout_before_open, layout_after_open = nil, nil
-
-    layout.without_equalalways(function()
-      vim.api.nvim_win_close(globals.sidebar_win, true)
-    end)
-    globals.sidebar_win = nil
-    globals.sidebar_buf = nil
-
-    -- Closing hands all freed columns to one neighbour; give them back proportionally
-    if source then
-      layout.apply(source)
-    end
-  else
+  if not M.is_opened() then
     print("No sidebar to close.")
+    return
   end
+
+  opened = false
+  preview.close()
+  local current = vim.api.nvim_get_current_tabpage()
+  for tab in pairs(wins.all()) do
+    if tab ~= current then
+      wins.close(tab)
+    end
+  end
+  wins.close(current)
+
+  if globals.sidebar_buf and vim.api.nvim_buf_is_valid(globals.sidebar_buf) then
+    vim.api.nvim_buf_delete(globals.sidebar_buf, { force = true })
+  end
+  globals.sidebar_buf = nil
 end
 
 function M.toggle()
@@ -176,15 +164,14 @@ function M.update()
     return
   end
 
-  buffer_list = buffers.get_list()
-  render.draw(buffer_list, vim.api.nvim_get_current_buf())
-
-  if M.is_opened() then
-    vim.api.nvim_win_set_width(globals.sidebar_win, SIDEBAR_WIDTH)
-  end
+  refresh()
+  wins.fix_widths()
 end
 
+require('pile.windows.sidebar.tab_watch').setup(M, augroup)
+
 vim.api.nvim_create_autocmd({"BufAdd", "BufLeave", "BufEnter"}, {
+  group = augroup,
   pattern = "*",
   callback = function()
     if vim.api.nvim_get_current_buf() ~= globals.sidebar_buf then
@@ -197,6 +184,7 @@ vim.api.nvim_create_autocmd({"BufAdd", "BufLeave", "BufEnter"}, {
 status_watch.setup(M)
 
 vim.api.nvim_create_autocmd("FileType", {
+  group = augroup,
   pattern = "*",
   callback = function(ev)
     -- Unlisted buffers (preview scratch, plugin UIs) never appear in the sidebar

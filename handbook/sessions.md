@@ -43,7 +43,10 @@ The file is written atomically (temporary file + rename), so a failed write cann
    saved tab is rebuilt with its original split directions. Sizes are scaled to the current screen
    so the split ratios match, and the previously active tab and window are focused again. Windows
    whose file no longer exists are dropped and the remaining splits fill their space. If the
-   sidebar was open, it is reopened in the active tab.
+   sidebar was open, it is reopened in every tab.
+
+Which tab each buffer belongs to is not saved yet. After a restore, a buffer belongs to the tabs
+whose windows show it, and files that were not open before also belong to the first tab.
 
 Restoring **adds** buffers; buffers you already have open stay open.
 

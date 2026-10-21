@@ -32,6 +32,7 @@ local function setup_highlights()
     fg = "White",
   })
   vim.api.nvim_set_hl(0, "PileAlias", { link = "Special", default = true })
+  vim.api.nvim_set_hl(0, "PileTabHeader", { link = "Title", default = true })
   vim.api.nvim_set_hl(0, "PileModified", { link = "WarningMsg", default = true })
   vim.api.nvim_set_hl(0, "PileGitModified", { link = "Changed", default = true })
   vim.api.nvim_set_hl(0, "PileGitAdded", { link = "Added", default = true })
@@ -52,6 +53,7 @@ local function setup_autocmds()
   })
 
   require("pile.features.aliases").follow_buffer_renames(group, sidebar.schedule_update)
+  require("pile.buffers.membership").setup(group)
 
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = group,
@@ -194,12 +196,14 @@ end
 
 local function move_buffer(direction)
   local reorder = require('pile.features.reorder')
+  local groups = require('pile.buffers.groups')
   local buffer_list = buffers.get_list()
+  local group = groups.current(groups.build(buffer_list)) or { buffers = {} }
   local current_buf = buffers.get_current()
 
-  for i, buf in ipairs(buffer_list) do
+  for i, buf in ipairs(group.buffers) do
     if buf.buf == current_buf then
-      if reorder.shift(buffer_list, i, direction == "up" and -1 or 1) then
+      if reorder.shift(buffer_list, group.buffers, i, direction == "up" and -1 or 1) then
         sidebar.update()
         print("Buffer moved " .. direction)
         return

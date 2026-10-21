@@ -8,20 +8,25 @@ local ns_id = vim.api.nvim_create_namespace('pile_line_decorations')
 
 local M = {}
 
-local function buffer_list_to_lines(buffer_list)
+local function rows_to_lines(rows)
   local lines = {}
-  for _, buffer in ipairs(buffer_list) do
-    table.insert(lines, buffer.alias or buffer.filename)
+  for _, row in ipairs(rows) do
+    local buffer = row.buffer
+    table.insert(lines, buffer and (buffer.alias or buffer.filename) or row.group.label)
   end
   return lines
 end
 
-local function highlight_lines(buffer_list, target_buffer)
-  for i, buffer in ipairs(buffer_list) do
-    if buffer.alias then
+local function highlight_lines(rows, target_buffer)
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  for i, row in ipairs(rows) do
+    local buffer = row.buffer
+    if not buffer then
+      vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "PileTabHeader", i - 1, 0, -1)
+    elseif buffer.alias then
       vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "PileAlias", i - 1, 0, -1)
     end
-    if buffer.buf == target_buffer then
+    if buffer and buffer.buf == target_buffer and row.group.tab == current_tab then
       vim.api.nvim_buf_add_highlight(globals.sidebar_buf, -1, "SidebarCurrentBuffer", i - 1, 0, -1)
     end
   end
@@ -78,7 +83,7 @@ local function set_virt_text(line, virt_text, pos)
   end
 end
 
-local function apply_decorations(buffer_list)
+local function apply_decorations(rows)
   vim.api.nvim_buf_clear_namespace(globals.sidebar_buf, ns_id, 0, -1)
 
   if window_indicators_enabled() then
@@ -88,22 +93,24 @@ local function apply_decorations(buffer_list)
     end
   end
 
-  for i, buffer in ipairs(buffer_list) do
-    set_virt_text(i - 1, build_prefix_virt_text(buffer), "inline")
-    set_virt_text(i - 1, marks.build(buffer), "right_align")
+  for i, row in ipairs(rows) do
+    if row.buffer then
+      set_virt_text(i - 1, build_prefix_virt_text(row.buffer), "inline")
+      set_virt_text(i - 1, marks.build(row.buffer), "right_align")
+    end
   end
 end
 
---- Draw the buffer list into the sidebar buffer
---- @param buffer_list table[]
---- @param current_buf number Buffer to highlight as current
-function M.draw(buffer_list, current_buf)
+--- Draw group headers and buffers into the sidebar buffer
+--- @param rows table[] From groups.rows()
+--- @param current_buf number Buffer to highlight as current in the current tab's group
+function M.draw(rows, current_buf)
   vim.bo[globals.sidebar_buf].modifiable = true
-  vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, buffer_list_to_lines(buffer_list))
+  vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, rows_to_lines(rows))
   vim.bo[globals.sidebar_buf].modifiable = false
 
-  highlight_lines(buffer_list, current_buf)
-  apply_decorations(buffer_list)
+  highlight_lines(rows, current_buf)
+  apply_decorations(rows)
 end
 
 return M

@@ -17,6 +17,8 @@ pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: re
 
 - **Buffer sidebar** — lists the same buffers as `:ls`, highlights the current one, and opens a
   buffer in the window you pick
+- **Grouped by tab** — buffers are listed under the tab they were opened in, and the sidebar is
+  shown in every tab
 - **Vim-like reordering** — `dd` / `yy` / `p` / `P`, `<C-j>` / `<C-k>`, visual-mode selections,
   and `:PileSort`
 - **Per-project sessions** — the buffer list and its order are saved on exit and restored on
@@ -176,9 +178,9 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 
 | Command | Description |
 | --- | --- |
-| `:PileToggle` | Open or close the sidebar |
-| `:PileGoToNextBuffer` / `:PileGoToPrevBuffer` | Go to the next / previous buffer in sidebar order (wraps around) |
-| `:PileMoveBufferUp` / `:PileMoveBufferDown` | Move the current buffer one position in the sidebar |
+| `:PileToggle` | Open or close the sidebar in every tab |
+| `:PileGoToNextBuffer` / `:PileGoToPrevBuffer` | Go to the next / previous buffer of the current tab's group (wraps around) |
+| `:PileMoveBufferUp` / `:PileMoveBufferDown` | Move the current buffer one position within the current tab's group |
 | `:PileSort[!] {key}` | Sort once by `name`, `path`, `extension`, `filetype` or `recent`; `!` reverses |
 | `:PileSaveSession [name]` | Save the buffer list to the current session, or to `name` |
 | `:PileRestoreSession [name]` | Load the buffers and windows of the current session, or of `name` |
@@ -202,8 +204,9 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | `a` | n | Edit display names; `:w` applies, `q` cancels |
 | `e` | n | Edit file paths; `:w` renames files on disk, `q` cancels |
 
-Close the sidebar with `:PileToggle` or `:close`. The register is cleared when you leave the
-sidebar window.
+Close the sidebar with `:PileToggle` or `:close`; either closes it in every tab. The register is
+cleared when you leave the sidebar window. On a tab header line, the keys that act on a buffer do
+nothing; `p` / `P` put at the top of that group. Moving with `<C-j>` / `<C-k>` stays within a group.
 
 ### Highlight groups
 
@@ -211,6 +214,7 @@ sidebar window.
 | --- | --- | --- |
 | `SidebarCurrentBuffer` | `bg=#3E4452 fg=Red` | Current buffer line |
 | `PileAlias` | links to `Special` | Buffers with a display name |
+| `PileTabHeader` | links to `Title` | Tab header lines (`Tab 1`, `Unassigned`) |
 | `PileModified` | links to `WarningMsg` | `●` mark |
 | `PileGitModified` | links to `Changed` | `M`, `R` and other git letters |
 | `PileGitAdded` | links to `Added` | `A` |

@@ -1,6 +1,7 @@
 local M = {
   sidebar_buf = nil,
-  sidebar_win = nil,
+  -- tabpage -> sidebar window in that tab
+  sidebar_wins = {},
 }
 
 return M

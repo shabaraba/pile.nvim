@@ -1,6 +1,7 @@
 local session_store = require('pile.storage.session_store')
 local config = require('pile.config')
 local log = require('pile.log')
+local groups = require('pile.buffers.groups')
 
 local M = {}
 
@@ -127,15 +128,22 @@ function M.move_range(from_line, to_line, direction, buffer_list)
   return reordered
 end
 
---- Move one buffer up or down by `step` and persist the new order
---- @return boolean moved false when the move would leave the list
-function M.shift(buffer_list, index, step)
+--- Move one buffer of a group up or down by `step` and persist the new order
+--- @param buffer_list table[] Whole list, in stored order
+--- @param group_buffers table[] Buffers of the group the move happens in
+--- @return boolean moved false when the move would leave the group
+function M.shift(buffer_list, group_buffers, index, step)
   local target = index + step
-  if not is_valid_index(index, #buffer_list) or not is_valid_index(target, #buffer_list) then
+  if not is_valid_index(index, #group_buffers) or not is_valid_index(target, #group_buffers) then
     return false
   end
-  M.save_buffer_order(M.move_buffer(index, target, buffer_list))
+  M.save_group_order(buffer_list, group_buffers, M.move_buffer(index, target, group_buffers))
   return true
+end
+
+--- Persist a new order of one group's buffers; see groups.merge_order()
+function M.save_group_order(buffer_list, old_group, new_group)
+  return M.save_buffer_order(groups.merge_order(buffer_list, old_group, new_group))
 end
 
 --- Whether the sidebar follows the saved manual order (session.preserve_order)

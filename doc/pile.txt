@@ -139,18 +139,19 @@ debug.level             "error", "warn", "info", "debug" or "trace".
 4. COMMANDS                                                    *pile-commands*
 
                                                                  *:PileToggle*
-:PileToggle             Open or close the sidebar.
+:PileToggle             Open or close the sidebar in every tab.
 
                                                          *:PileGoToNextBuffer*
                                                          *:PileGoToPrevBuffer*
 :PileGoToNextBuffer
-:PileGoToPrevBuffer     Go to the next / previous buffer in sidebar order,
-                        wrapping around.
+:PileGoToPrevBuffer     Go to the next / previous buffer of the current tab's
+                        group in sidebar order, wrapping around.
 
                                                            *:PileMoveBufferUp*
                                                          *:PileMoveBufferDown*
 :PileMoveBufferUp
-:PileMoveBufferDown     Move the current buffer one position in the sidebar.
+:PileMoveBufferDown     Move the current buffer one position within the
+                        current tab's group.
 
                                                                    *:PileSort*
 :PileSort[!] {key}      Sort once and store the result as the custom order.
@@ -190,22 +191,40 @@ debug.level             "error", "warn", "info", "debug" or "trace".
 ==============================================================================
 5. SIDEBAR                                                      *pile-sidebar*
 
-The sidebar is a 35-column split on the far left. Each line shows window
-markers, a file icon, the name (or alias) and, right-aligned, the git status
-and unsaved mark. Buffers that share a file name get the shortest
-distinguishing directory as prefix.
+The sidebar is a 35-column split on the far left. While it is open, every
+tab has one, including new tabs, and all show the same list. Closing it in
+one tab (|:PileToggle|, |:close|, |:only|) closes it in every tab.
+
+Each buffer line shows window markers (windows of that tab), a file icon,
+the name (or alias) and, right-aligned, the git status and unsaved mark.
+Buffers that share a file name get the shortest distinguishing directory as
+prefix.
+
+                                                          *pile-sidebar-tabs*
+Buffers are grouped under a header line per tab ("Tab 1", "Tab 2", ...). A
+buffer belongs to a tab once it is added to the buffer list or entered in
+that tab, and stays there when no window shows it any more. A buffer can
+belong to several tabs and then appears in each group. When a tab is closed,
+buffers that belonged only to it are kept under "Unassigned" at the end.
+Each group follows the stored order of the whole list.
 
                                                        *pile-sidebar-keymaps*
-<CR>        Open the buffer. With several candidate windows,
-            nvim-window-picker asks which one; with none, a split is made.
+On a header line, keys that act on a buffer do nothing, and `p` / `P` put at
+the top of that group.
+
+<CR>        Open the buffer. With several candidate windows of the current
+            tab, nvim-window-picker asks which one; with none, a split is
+            made.
 K           Toggle a floating preview that follows the cursor. Buffers not
             loaded yet are previewed without firing |BufRead|.
 dd    {x}d  Cut: wipe the buffer(s) and keep them in pile's register. Asks
             to save unsaved changes first.
 yy    {x}y  Yank the buffer(s) into pile's register.
-p     P     Put the register below / above the cursor.
+p     P     Put the register below / above the cursor. The buffers join
+            the tab of that group.
 D           Wipe the buffer immediately. Unsaved changes are lost.
-<C-j> <C-k> Move the buffer (or visual selection) down / up.
+<C-j> <C-k> Move the buffer (or visual selection) down / up within its
+            group.
 a           Edit display names. See |pile-edit|.
 e           Edit file paths. See |pile-edit|.
 
@@ -233,11 +252,16 @@ and their horizontal/vertical splits (after |:tabonly| and |:only|), scaling
 the saved sizes to the current screen and focusing the previously active tab
 and window. Buffers already open stay open.
 
+Tab membership (|pile-sidebar-tabs|) is not saved. After a restore, a buffer
+belongs to the tabs whose windows show it, and files that were not open
+before also belong to the first tab.
+
 ==============================================================================
 7. EDITING NAMES AND FILES                                         *pile-edit*
 
 `a` and `e` turn the sidebar into an editable buffer. Change lines and |:w|
-to apply, or press `q` to discard. Do not add, delete or reorder lines.
+to apply, or press `q` to discard. Do not add, delete or reorder lines. The
+lines list each buffer once in the stored order, without tab headers.
 
 Display names (`a`): the edited text becomes an alias shown in the sidebar.
 Empty the line, or restore the original name, to remove it. An alias follows
@@ -262,6 +286,7 @@ is sent afterwards.
 SidebarCurrentBuffer    Current buffer line. Set by setup(); override it
                         afterwards.
 PileAlias               Buffers with a display name.     Links to |hl-Special|
+PileTabHeader           Tab header lines.                  Links to |hl-Title|
 PileModified            "●" mark.                     Links to |hl-WarningMsg|
 PileGitModified         M, R and other git letters.   Links to |hl-Changed|
 PileGitAdded            A                                Links to |hl-Added|
