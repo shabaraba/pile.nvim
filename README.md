@@ -201,12 +201,16 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | `p` / `P` | n | Put the register below / above the cursor |
 | `D` | n | Close the buffer immediately, **discarding unsaved changes** |
 | `<C-j>` / `<C-k>` | n, x | Move the buffer(s) down / up |
+| `<CR>` | n | On a tab header: go to that tab |
+| `o` / `O` | n | On a tab header: create a tab after / before it |
+| `D` | n | On a tab header: close that tab (its buffers move to `Unassigned`; the last tab stays) |
 | `a` | n | Edit display names; `:w` applies, `q` cancels |
 | `e` | n | Edit file paths; `:w` renames files on disk, `q` cancels |
 
 Close the sidebar with `:PileToggle` or `:close`; either closes it in every tab. The register is
-cleared when you leave the sidebar window. On a tab header line, the keys that act on a buffer do
-nothing; `p` / `P` put at the top of that group. Moving with `<C-j>` / `<C-k>` stays within a group.
+cleared when you leave the sidebar window. On a tab header line, `<CR>`, `o` / `O` and `D` act on
+the tab (not on the `Unassigned` header), the other keys that act on a buffer do nothing, and
+`p` / `P` put at the top of that group. Moving with `<C-j>` / `<C-k>` stays within a group.
 
 ### Highlight groups
 

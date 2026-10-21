@@ -209,8 +209,15 @@ buffers that belonged only to it are kept under "Unassigned" at the end.
 Each group follows the stored order of the whole list.
 
                                                        *pile-sidebar-keymaps*
-On a header line, keys that act on a buffer do nothing, and `p` / `P` put at
-the top of that group.
+On a tab header line, these keys act on the tab:
+
+<CR>        Go to the tab.
+o     O     Create a new tab after / before the tab and go to it.
+D           Close the tab, like |:tabclose|. Buffers that belonged only to
+            it move to "Unassigned". The last tab is not closed.
+
+They do nothing on the "Unassigned" header. Other keys that act on a buffer
+do nothing on a header line, and `p` / `P` put at the top of that group.
 
 <CR>        Open the buffer. With several candidate windows of the current
             tab, nvim-window-picker asks which one; with none, a split is
