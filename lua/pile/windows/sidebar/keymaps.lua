@@ -79,13 +79,12 @@ function M.setup(sidebar)
   -- Only buffers within one group move; past its ends they go to the adjacent group
   local function move_rows(from_line, to_line, step)
     local rows = sidebar.get_rows()
-    local first_buf = rows[from_line] and rows[from_line].buffer
     local group = transfer.shift_rows(rows, from_line, to_line, step, sidebar.get_buffer_list())
     if not group then
       return nil
     end
     sidebar.update()
-    return groups.find_row(sidebar.get_rows(), first_buf.buf, group.tab)
+    return groups.find_row(sidebar.get_rows(), rows[from_line].buffer.buf, group.tab)
   end
 
   local function move_line(step)

@@ -1,26 +1,24 @@
 --- Move and share buffers between tab groups
+local groups = require('pile.buffers.groups')
 local membership = require('pile.buffers.membership')
 local reorder = require('pile.features.reorder')
 local window = require('pile.windows')
 
 local M = {}
 
-local function can_replace(tab, buf, other)
-  return other > 0 and other ~= buf and vim.api.nvim_buf_is_valid(other)
-    and vim.bo[other].buflisted and membership.has(tab, other)
-end
-
+--- The window's alternate buffer if the tab's group has it, else the group's first buffer
 local function replacement(tab, buf)
   local alternate = vim.fn.bufnr('#')
-  if can_replace(tab, buf, alternate) then
-    return alternate
-  end
-  for _, other in ipairs(vim.api.nvim_list_bufs()) do
-    if can_replace(tab, buf, other) then
-      return other
+  local first
+  for _, buffer in ipairs(groups.of_tab(require('pile.buffers').get_list(), tab)) do
+    if buffer.buf == alternate and alternate ~= buf then
+      return alternate
+    end
+    if buffer.buf ~= buf then
+      first = first or buffer.buf
     end
   end
-  return vim.api.nvim_create_buf(true, false)
+  return first or vim.api.nvim_create_buf(true, false)
 end
 
 --- Take `buf` out of `tab`; that tab's windows showing it switch to another of its buffers
@@ -68,15 +66,16 @@ function M.place(group, entries, position, buffer_list)
 end
 
 local function adjacent_group(rows, group, step)
-  local list = {}
+  local previous
   for _, row in ipairs(rows) do
     if not row.buffer then
-      table.insert(list, row.group)
-    end
-  end
-  for i, candidate in ipairs(list) do
-    if candidate == group then
-      return list[i + step]
+      if step < 0 and row.group == group then
+        return previous
+      end
+      if step > 0 and previous == group then
+        return row.group
+      end
+      previous = row.group
     end
   end
 end

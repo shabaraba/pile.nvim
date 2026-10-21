@@ -26,10 +26,13 @@ function M.of_tab(buffer_list, tab)
       position[buffer.buf] = #result
     end
   end
-  local unranked = math.huge
+  local order = membership.order_of(tab)
+  if not order or next(order) == nil then
+    return result
+  end
   table.sort(result, function(a, b)
-    local rank_a = membership.rank(tab, a.buf) or unranked
-    local rank_b = membership.rank(tab, b.buf) or unranked
+    local rank_a = order[a.buf] or math.huge
+    local rank_b = order[b.buf] or math.huge
     if rank_a ~= rank_b then
       return rank_a < rank_b
     end

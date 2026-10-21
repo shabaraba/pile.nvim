@@ -1,25 +1,29 @@
 --- Which tabs each buffer belongs to
 --- A buffer joins the current tab when it is added or entered there and stays a
 --- member whether or not a window shows it. Buffers that belong to no open tab
---- are "unassigned". A member may also carry its rank in the tab's own order.
+--- are "unassigned". A tab may also keep its own order of its members.
 local M = {}
 
 local members = {}
+local orders = {}
 local quiet = false
 
 function M.add(tab, buf)
   members[tab] = members[tab] or {}
-  members[tab][buf] = members[tab][buf] or true
+  members[tab][buf] = true
 end
 
 function M.remove(tab, buf)
   if members[tab] then
     members[tab][buf] = nil
   end
+  if orders[tab] then
+    orders[tab][buf] = nil
+  end
 end
 
 function M.has(tab, buf)
-  return members[tab] ~= nil and members[tab][buf] ~= nil
+  return members[tab] ~= nil and members[tab][buf] == true
 end
 
 --- @return number[] Open tabs `buf` belongs to
@@ -36,27 +40,22 @@ end
 --- Record the order of a tab's members; members left out rank after them
 --- @param bufs number[]
 function M.set_order(tab, bufs)
-  for buf in pairs(members[tab] or {}) do
-    members[tab][buf] = true
-  end
+  orders[tab] = {}
   for rank, buf in ipairs(bufs) do
     if M.has(tab, buf) then
-      members[tab][buf] = rank
+      orders[tab][buf] = rank
     end
   end
 end
 
---- @return number|nil Rank of `buf` in the order of `tab`
-function M.rank(tab, buf)
-  local value = members[tab] and members[tab][buf]
-  return type(value) == 'number' and value or nil
+--- @return table<number, number>|nil Rank of each ordered member of `tab`
+function M.order_of(tab)
+  return orders[tab]
 end
 
 --- Drop every tab's own order so that groups follow the buffer list again
 function M.clear_orders()
-  for tab in pairs(members) do
-    M.set_order(tab, {})
-  end
+  orders = {}
 end
 
 --- Run `fn` without recording the buffers it adds or enters
@@ -71,8 +70,8 @@ function M.quietly(fn)
 end
 
 local function remove_buffer(buf)
-  for _, bufs in pairs(members) do
-    bufs[buf] = nil
+  for tab in pairs(members) do
+    M.remove(tab, buf)
   end
 end
 
@@ -80,6 +79,7 @@ local function prune_tabs()
   for tab in pairs(members) do
     if not vim.api.nvim_tabpage_is_valid(tab) then
       members[tab] = nil
+      orders[tab] = nil
     end
   end
 end
