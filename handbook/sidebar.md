@@ -49,7 +49,20 @@ Unassigned
   The `Unassigned` group is shown only when it has buffers.
 - Each group follows the stored order of the whole list (see [Reordering](#reordering)).
 
-On a header line, `<CR>`, `K`, `dd`, `yy`, `D` and `<C-j>` / `<C-k>` do nothing.
+### Tab operations on a header line
+
+| Key | Action |
+| --- | --- |
+| `<CR>` | Go to that tab |
+| `o` / `O` | Create a new tab after / before that tab and go to it |
+| `D` | Close that tab |
+
+- Closing a tab from the sidebar is the same as `:tabclose`: buffers that belonged only to that tab
+  are not deleted and move to `Unassigned`. Unsaved changes stay in their buffers.
+- The last tab is not closed.
+- The `Unassigned` header has no tab, so these keys do nothing on it.
+
+On a header line, `K`, `dd`, `yy` and `<C-j>` / `<C-k>` do nothing.
 
 ## Opening a buffer
 

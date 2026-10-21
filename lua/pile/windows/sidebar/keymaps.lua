@@ -3,6 +3,7 @@ local register = require 'pile.features.register'
 local reorder = require 'pile.features.reorder'
 local membership = require 'pile.buffers.membership'
 local preview = require 'pile.windows.preview'
+local tab_actions = require 'pile.windows.sidebar.tab_actions'
 local wins = require 'pile.windows.sidebar.wins'
 
 local M = {}
@@ -115,7 +116,24 @@ function M.setup(sidebar)
     restore_visual_selection(from_line + step, to_line + step)
   end
 
+  -- The "Unassigned" header has no tab and takes no tab action
+  local function on_header(action, ...)
+    local row = sidebar.get_row_at_cursor()
+    if row and not row.buffer then
+      if row.group.tab then
+        action(row.group.tab, ...)
+      end
+      return true
+    end
+  end
+
+  set_keymap('n', 'o', function() on_header(tab_actions.new, 0) end, "New tab after this tab")
+  set_keymap('n', 'O', function() on_header(tab_actions.new, -1) end, "New tab before this tab")
+
   set_keymap('n', '<CR>', function()
+    if on_header(tab_actions.go) then
+      return
+    end
     local available_windows = require('pile.windows').get_available_windows()
     require('pile.buffers').open_selected({
       buffer = sidebar.get_buffer_at_cursor(),
@@ -156,6 +174,9 @@ function M.setup(sidebar)
   set_keymap('n', 'P', function() paste(-1) end, "Paste above")
 
   set_keymap('n', 'D', function()
+    if on_header(tab_actions.close) then
+      return
+    end
     local buffer = buffer_at_cursor()
     if buffer then
       vim.api.nvim_buf_delete(buffer.buf, { force = true })
