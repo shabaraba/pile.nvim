@@ -3,6 +3,8 @@ local capture = require('pile.features.session.capture')
 local log = require('pile.log')
 local layout = require('pile.windows.layout')
 
+local M = {}
+
 --- Drop windows whose file could not be restored and attach buffer handles
 --- @return table|nil Normalized tree, or nil if no window is left
 local function resolve_tree(node, buffer_map)
@@ -68,10 +70,11 @@ local function restore_tab(tree)
   return focused or vim.api.nvim_get_current_win()
 end
 
---- The tab's saved splits, or a window on its first buffer when it had no window to save
+--- The tab's saved splits, or a window on its first buffer when none of its windows can be restored
 local function tree_of(saved_tab, buffer_map)
-  if saved_tab.tree then
-    return resolve_tree(saved_tab.tree, buffer_map)
+  local tree = saved_tab.tree and resolve_tree(saved_tab.tree, buffer_map)
+  if tree then
+    return tree
   end
   for _, path in ipairs(saved_tab.buffers or {}) do
     local tree = resolve_tree({ type = 'leaf', bufpath = path }, buffer_map)
@@ -87,7 +90,7 @@ end
 --- @param saved table|nil Layout information from capture.window_layout()
 --- @param buffer_map table|nil Mapping from file path to buffer handle
 --- @return table[] restored {tab, tree, entry}: each rebuilt tab and the saved tab it came from
-return function(saved, buffer_map)
+function M.restore(saved, buffer_map)
   if not buffer_map or type(buffer_map) ~= 'table' then
     log.debug("Invalid buffer_map provided to restore_window_layout")
     return {}
@@ -147,3 +150,5 @@ return function(saved, buffer_map)
   end
   return restored
 end
+
+return M

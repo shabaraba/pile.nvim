@@ -3,10 +3,14 @@ local M = {}
 
 local VAR = 'pile_name'
 
---- @return string|nil
+--- @return string|nil One line with no surrounding whitespace, whatever others stored in the variable
 function M.get(tab)
   local ok, name = pcall(vim.api.nvim_tabpage_get_var, tab, VAR)
-  return ok and type(name) == 'string' and name ~= '' and name or nil
+  if not ok or type(name) ~= 'string' then
+    return nil
+  end
+  name = vim.trim((name:gsub('%s+', ' ')))
+  return name ~= '' and name or nil
 end
 
 --- @param name string|nil nil or '' removes the name

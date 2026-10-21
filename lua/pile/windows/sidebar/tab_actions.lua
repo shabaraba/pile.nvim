@@ -41,11 +41,10 @@ function M.move(tab, step)
   end
   -- :tabmove moves only the current tab; visiting it without autocmds leaves focus and sidebars alone
   local current = vim.api.nvim_get_current_tabpage()
-  return report(pcall(function()
-    vim.cmd('noautocmd ' .. number .. 'tabnext')
-    vim.cmd('tabmove ' .. (step > 0 and '+1' or '-1'))
-    vim.cmd('noautocmd ' .. vim.api.nvim_tabpage_get_number(current) .. 'tabnext')
-  end))
+  vim.cmd('noautocmd ' .. number .. 'tabnext')
+  local ok, err = pcall(vim.cmd, 'tabmove ' .. (step > 0 and '+1' or '-1'))
+  vim.cmd('noautocmd ' .. vim.api.nvim_tabpage_get_number(current) .. 'tabnext')
+  return report(ok, err)
 end
 
 return M

@@ -4,7 +4,7 @@ local session_store = require('pile.storage.session_store')
 local log = require('pile.log')
 local capture = require('pile.features.session.capture')
 local restore_buffers = require('pile.features.session.restore_buffers')
-local restore_window_layout = require('pile.features.session.restore_layout')
+local restore_layout = require('pile.features.session.restore_layout')
 local tab_groups = require('pile.features.session.tab_groups')
 
 local M = {}
@@ -60,7 +60,7 @@ function M.restore_session(session_name)
     buffer_map, restored_count = restore_buffers.add(buffers)
 
     log.debug(string.format("Restoring layout with %d windows", capture.count_windows(session.layout)))
-    tab_groups.apply(restore_window_layout(session.layout, buffer_map), buffer_map)
+    tab_groups.apply(restore_layout.restore(session.layout, buffer_map), buffer_map)
   end)
 
   sidebar.resume()
