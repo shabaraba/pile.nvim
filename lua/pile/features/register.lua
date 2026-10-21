@@ -95,15 +95,16 @@ function M.cut(rows)
 end
 
 --- @param rows table[] Buffer rows; see groups.rows()
+--- @return number count Buffers yanked; a buffer on several rows counts once
 function M.yank(rows)
   if not rows or #rows == 0 then
     log.debug("No buffers to yank")
-    return false
+    return 0
   end
 
   store_rows(rows)
   log.debug(string.format("Yanked %d buffer(s)", #register))
-  return true
+  return #register
 end
 
 --- Buffer entries for the register's files, re-adding (and listing) deleted ones

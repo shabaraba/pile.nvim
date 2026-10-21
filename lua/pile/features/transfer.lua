@@ -27,8 +27,9 @@ function M.detach(tab, buf)
   for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
     if vim.api.nvim_win_get_buf(win) == buf and window.is_normal_window(win) then
       -- Run in the window so that the buffer shown instead joins its tab, not the current one
+      -- `:buffer!` hides the buffer even with unsaved changes and 'nohidden'
       vim.api.nvim_win_call(win, function()
-        vim.api.nvim_win_set_buf(win, replacement(tab, buf))
+        vim.cmd.buffer({ replacement(tab, buf), bang = true })
       end)
     end
   end

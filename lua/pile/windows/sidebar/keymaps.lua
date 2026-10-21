@@ -151,9 +151,7 @@ function M.setup(sidebar)
   end, "Yank buffer")
 
   set_keymap('x', 'y', function()
-    local selected = selected_rows()
-    register.yank(selected)
-    print(string.format("Yanked %d buffer(s)", #selected))
+    print(string.format("Yanked %d buffer(s)", register.yank(selected_rows())))
     exit_visual_mode()
   end, "Yank selection")
 
