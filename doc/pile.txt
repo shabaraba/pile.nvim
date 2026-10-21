@@ -276,8 +276,9 @@ the saved sizes to the current screen and focusing the previously active tab
 and window. Buffers already open stay open.
 
 For every tab, its name and its buffers (|pile-sidebar-tabs|) are saved in
-the order of its group. Restore gives each tab exactly these buffers; the
-other buffers are listed under "Unassigned". A tab whose windows show no
+the order of its group. Restore gives each tab these buffers; buffers saved
+under "Unassigned" stay there. Buffers that were open before the restore
+and are in no saved tab join the current tab. A tab whose windows show no
 saveable file opens on its first buffer.
 
 Sessions saved by older versions have no tab groups. After restoring one, a

@@ -56,11 +56,12 @@ function M.restore_session(session_name)
   local restored_count = 0
   local ok, err = pcall(function()
     restore_buffers.close_empty_nofile()
+    local open_before = restore_buffers.listed()
     local buffer_map
     buffer_map, restored_count = restore_buffers.add(buffers)
 
     log.debug(string.format("Restoring layout with %d windows", capture.count_windows(session.layout)))
-    tab_groups.apply(restore_layout.restore(session.layout, buffer_map), buffer_map)
+    tab_groups.apply(restore_layout.restore(session.layout, buffer_map), buffer_map, open_before)
   end)
 
   sidebar.resume()

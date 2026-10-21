@@ -15,15 +15,19 @@ function M.capture(tab, buffers)
 end
 
 --- Give the restored tabs their saved names and buffers
---- Buffers saved in no tab are left unassigned. Sessions saved before tab
---- groups were stored carry no buffer list; such a tab keeps what restoring
---- put in it.
+--- Buffers saved in no tab are left unassigned, while buffers that were open
+--- before the restore and are in no saved tab join the current tab. Sessions
+--- saved before tab groups were stored carry no buffer list; such a tab keeps
+--- what restoring put in it.
 --- @param restored table[] {tab, entry} where entry is a saved tab
 --- @param buffer_map table<string, number> path -> buffer
-function M.apply(restored, buffer_map)
+--- @param open_before number[] Buffers listed before the restore
+function M.apply(restored, buffer_map, open_before)
+  local has_groups = false
   for _, item in ipairs(restored) do
     tab_names.set(item.tab, item.entry.name)
     if item.entry.buffers then
+      has_groups = true
       local bufs = {}
       for _, path in ipairs(item.entry.buffers) do
         if buffer_map[path] then
@@ -31,6 +35,15 @@ function M.apply(restored, buffer_map)
         end
       end
       membership.reset(item.tab, bufs)
+    end
+  end
+
+  if has_groups then
+    local current = vim.api.nvim_get_current_tabpage()
+    for _, buf in ipairs(open_before) do
+      if vim.api.nvim_buf_is_valid(buf) and #membership.tabs_of(buf) == 0 then
+        membership.add(current, buf)
+      end
     end
   end
 end

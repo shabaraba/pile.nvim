@@ -47,8 +47,10 @@ The file is written atomically (temporary file + rename), so a failed write cann
    whose file no longer exists are dropped and the remaining splits fill their space. A tab whose
    windows were all left out opens on its first buffer. If the sidebar was open, it is reopened in
    every tab.
-4. Each tab gets its saved name and exactly its saved buffers, in the saved order. The other
-   buffers, including those you already had open, are listed under `Unassigned`.
+4. Each tab gets its saved name and its saved buffers, in the saved order. Buffers that were
+   saved under `Unassigned` stay there. Buffers you already had open before the restore (files
+   from the command line, `:badd`, ...) that are in no saved tab join the current tab, after its
+   saved buffers.
 
 Restoring **adds** buffers; buffers you already have open stay open.
 
