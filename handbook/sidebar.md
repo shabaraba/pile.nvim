@@ -47,7 +47,9 @@ Unassigned
 - A buffer can belong to several tabs and then appears in each of their groups.
 - When a tab is closed, buffers that belonged only to it are kept, under `Unassigned` at the end.
   The `Unassigned` group is shown only when it has buffers.
-- Each group follows the stored order of the whole list (see [Reordering](#reordering)).
+- Each line stands for one buffer in one tab. Cut, yank, put and reordering act on that tab's
+  membership, so they can move or share a buffer between tabs (see below).
+- Each tab group has its own order (see [Reordering](#reordering)).
 
 ### Tab operations on a header line
 
@@ -83,22 +85,32 @@ The sidebar has its own register, separate from Vim registers. It holds buffers,
 
 | Key | Mode | Action |
 | --- | --- | --- |
-| `dd` | n | Cut the buffer under the cursor |
-| `d` | x | Cut the selected buffers |
+| `dd` | n | Cut the line under the cursor: take the buffer out of that tab |
+| `d` | x | Cut the selected lines |
 | `yy` | n | Yank the buffer under the cursor |
 | `y` | x | Yank the selected buffers |
 | `p` | n | Put below the cursor |
 | `P` | n | Put above the cursor |
-| `D` | n | Wipe the buffer without touching the register |
+| `D` | n | Wipe the buffer from every tab without touching the register |
 
-- **Cut** wipes the buffers (like `:bwipeout`) and stores their paths. If any of them has unsaved
-  changes you are asked to *Save*, *Discard* or *Cancel* first.
-- **Put** re-adds the stored files at the cursor position, within the group under the cursor, and
-  saves the resulting order to the current session. On a header line, `p` and `P` put at the top of
-  that group. The put buffers join that group's tab. Use `dd` → move → `p` to move a buffer far
-  down the list.
-- Selecting lines of several groups yanks or cuts each buffer once; header lines are skipped.
+- **Cut** takes the buffer out of the tab of that line and stores its path. Windows of that tab
+  that show the buffer switch to another buffer of the tab (or to an empty buffer when the tab has
+  none). The buffer is wiped (like `:bwipeout`) only when it belongs to no tab any more, which
+  includes cutting a line of `Unassigned`. Before wiping a buffer with unsaved changes you are
+  asked to *Save*, *Discard* or *Cancel*.
+- **Put** adds the stored files at the cursor position, within the group under the cursor, and
+  saves the resulting order. On a header line, `p` and `P` put at the top of that group. The put
+  buffers join that group's tab; a buffer the tab already has moves to the new position instead of
+  appearing twice. Putting into `Unassigned` takes the buffers out of every tab.
+- So `yy` → another tab's group → `p` **shares** a buffer with that tab, and `dd` → another tab's
+  group → `p` **moves** it there. Within one group, `dd` → `p` moves a buffer far down the list.
+- Selecting lines of several groups yanks each buffer once and cuts each line; header lines are
+  skipped.
 - **`D` does not ask**: unsaved changes in that buffer are lost.
+
+> [!NOTE]
+> Before tabs were grouped, `dd` always wiped the buffer. It now wipes it only when the line was
+> the buffer's last tab.
 - Leaving the sidebar window clears the register, so cut and put have to happen in one visit.
 
 ## Reordering
@@ -109,16 +121,23 @@ The sidebar has its own register, separate from Vim registers. It holds buffers,
 | `<C-j>` / `<C-k>` (visual) | Move the selected block; the selection is kept |
 | `:PileMoveBufferUp` / `:PileMoveBufferDown` | Move the **current** buffer (the one in your editing window) within the current tab's group |
 
-Moves stay within one group: a buffer does not move past the first or last line of its group, and
-a visual selection spanning two groups does not move.
+Moving past the first or last line of a group takes the buffer (or selection) to the adjacent
+group: to the bottom of the previous group or the top of the next one. It leaves its tab and joins
+the other, as with `dd` → `p`; moving into `Unassigned` takes it out of every tab. A visual
+selection spanning two groups does not move. `:PileMoveBufferUp` / `:PileMoveBufferDown` stay
+within the group.
 
-The stored order is one list for all groups. A move swaps places only among the buffers of that
-group, so buffers outside it keep their places and other groups keep their order. A put buffer is
-stored right after the buffer it follows in the group. With a single tab this is the same as moving
-within the whole list.
+Each tab group keeps its own order, so the same buffer can sit at different places in two tabs and
+reordering one group leaves the others as they are. `Unassigned` follows the stored order.
 
-Every change of order is written to the current session immediately. Buffers that have no stored
-position yet (for example a file you just opened) are appended at the bottom.
+The stored order is one list for all groups, and every change of order is also written to it in
+the current session immediately: a move swaps places only among the buffers of that group, and a
+put buffer is stored right after the buffer it follows in the group. With a single tab this is the
+same as moving within the whole list. The tab groups' own orders are not saved yet; after a
+restart each group follows the stored order.
+
+Buffers that have no position yet (for example a file you just opened) are appended at the bottom
+of their group.
 
 Reordering requires `session.preserve_order = true` (the default); otherwise the sidebar is
 displayed in buffer-number order.
@@ -126,7 +145,8 @@ displayed in buffer-number order.
 ## Sorting
 
 `:PileSort {key}` sorts the list once and stores the result as your custom order, so you can keep
-adjusting it by hand afterwards. `:PileSort! {key}` sorts in reverse.
+adjusting it by hand afterwards. `:PileSort! {key}` sorts in reverse. Every group is sorted, each
+on its own.
 
 | Key | Order |
 | --- | --- |

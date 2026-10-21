@@ -2,6 +2,7 @@ local session_store = require('pile.storage.session_store')
 local config = require('pile.config')
 local log = require('pile.log')
 local groups = require('pile.buffers.groups')
+local membership = require('pile.buffers.membership')
 
 local M = {}
 
@@ -130,19 +131,38 @@ end
 
 --- Move one buffer of a group up or down by `step` and persist the new order
 --- @param buffer_list table[] Whole list, in stored order
+--- @param tab number|nil Tab of the group; nil for the unassigned group
 --- @param group_buffers table[] Buffers of the group the move happens in
 --- @return boolean moved false when the move would leave the group
-function M.shift(buffer_list, group_buffers, index, step)
+function M.shift(buffer_list, tab, group_buffers, index, step)
   local target = index + step
   if not is_valid_index(index, #group_buffers) or not is_valid_index(target, #group_buffers) then
     return false
   end
-  M.save_group_order(buffer_list, group_buffers, M.move_buffer(index, target, group_buffers))
+  M.save_group_order(buffer_list, tab, group_buffers, M.move_buffer(index, target, group_buffers))
   return true
 end
 
---- Persist a new order of one group's buffers; see groups.merge_order()
-function M.save_group_order(buffer_list, old_group, new_group)
+local function bufs_of(group_buffers)
+  return vim.tbl_map(function(buffer) return buffer.buf end, group_buffers)
+end
+
+--- Persist a new order of one group's buffers
+--- A tab's group keeps it as the tab's own order. The stored list takes it as
+--- well (see groups.merge_order()), so every other tab first fixes its current
+--- order to stay as it is.
+--- @param tab number|nil Tab of the group; nil for the unassigned group
+function M.save_group_order(buffer_list, tab, old_group, new_group)
+  if M.is_enabled() then
+    for _, other in ipairs(vim.api.nvim_list_tabpages()) do
+      if other ~= tab then
+        membership.set_order(other, bufs_of(groups.of_tab(buffer_list, other)))
+      end
+    end
+    if tab then
+      membership.set_order(tab, bufs_of(new_group))
+    end
+  end
   return M.save_buffer_order(groups.merge_order(buffer_list, old_group, new_group))
 end
 

@@ -321,6 +321,7 @@ function M.restore_session(session_name)
     return false
   end
 
+  require('pile.buffers.membership').clear_orders()
   local buffers = vim.deepcopy(session.buffers)
   table.sort(buffers, function(a, b)
     return a.order < b.order

@@ -1,18 +1,73 @@
 --- Which tabs each buffer belongs to
 --- A buffer joins the current tab when it is added or entered there and stays a
 --- member whether or not a window shows it. Buffers that belong to no open tab
---- are "unassigned".
+--- are "unassigned". A member may also carry its rank in the tab's own order.
 local M = {}
 
 local members = {}
+local quiet = false
 
 function M.add(tab, buf)
   members[tab] = members[tab] or {}
-  members[tab][buf] = true
+  members[tab][buf] = members[tab][buf] or true
+end
+
+function M.remove(tab, buf)
+  if members[tab] then
+    members[tab][buf] = nil
+  end
 end
 
 function M.has(tab, buf)
-  return members[tab] ~= nil and members[tab][buf] == true
+  return members[tab] ~= nil and members[tab][buf] ~= nil
+end
+
+--- @return number[] Open tabs `buf` belongs to
+function M.tabs_of(buf)
+  local tabs = {}
+  for tab, bufs in pairs(members) do
+    if bufs[buf] and vim.api.nvim_tabpage_is_valid(tab) then
+      table.insert(tabs, tab)
+    end
+  end
+  return tabs
+end
+
+--- Record the order of a tab's members; members left out rank after them
+--- @param bufs number[]
+function M.set_order(tab, bufs)
+  for buf in pairs(members[tab] or {}) do
+    members[tab][buf] = true
+  end
+  for rank, buf in ipairs(bufs) do
+    if M.has(tab, buf) then
+      members[tab][buf] = rank
+    end
+  end
+end
+
+--- @return number|nil Rank of `buf` in the order of `tab`
+function M.rank(tab, buf)
+  local value = members[tab] and members[tab][buf]
+  return type(value) == 'number' and value or nil
+end
+
+--- Drop every tab's own order so that groups follow the buffer list again
+function M.clear_orders()
+  for tab in pairs(members) do
+    M.set_order(tab, {})
+  end
+end
+
+--- Run `fn` without recording the buffers it adds or enters
+function M.quietly(fn)
+  local was_quiet = quiet
+  quiet = true
+  local ok, err = pcall(fn)
+  quiet = was_quiet
+  if not ok then
+    error(err, 0)
+  end
 end
 
 local function remove_buffer(buf)
@@ -56,7 +111,9 @@ function M.setup(group)
   vim.api.nvim_create_autocmd({"BufAdd", "BufEnter", "BufWinEnter"}, {
     group = group,
     callback = function(ev)
-      M.add(vim.api.nvim_get_current_tabpage(), ev.buf)
+      if not quiet then
+        M.add(vim.api.nvim_get_current_tabpage(), ev.buf)
+      end
     end,
   })
 

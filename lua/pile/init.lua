@@ -203,7 +203,8 @@ local function move_buffer(direction)
 
   for i, buf in ipairs(tab_buffers) do
     if buf.buf == current_buf then
-      if reorder.shift(buffer_list, tab_buffers, i, direction == "up" and -1 or 1) then
+      local tab = vim.api.nvim_get_current_tabpage()
+      if reorder.shift(buffer_list, tab, tab_buffers, i, direction == "up" and -1 or 1) then
         sidebar.update()
         print("Buffer moved " .. direction)
         return
@@ -236,6 +237,8 @@ function M.sort_buffers(opts)
     return
   end
   reorder.save_buffer_order(sorted)
+  -- Every tab group follows the sorted list again
+  require('pile.buffers.membership').clear_orders()
   sidebar.update()
   print("Sorted buffers by " .. opts.args .. (opts.bang and " (reversed)" or ""))
 end
