@@ -119,6 +119,20 @@ function M.save_session(name, buffers, layout)
   end)
 end
 
+--- Replace only the buffer list (and so the order) of a session, keeping its windows and tab groups
+function M.save_buffers(name, buffers)
+  local buffer_data = build_buffer_data(buffers)
+
+  return get_store().update(function(data)
+    data.sessions = data.sessions or {}
+    local session = data.sessions[name] or { name = name, layout = {} }
+    session.buffers = buffer_data
+    session.last_updated = os.time()
+    data.sessions[name] = session
+    return data
+  end)
+end
+
 function M.set_current_session(name)
   return get_store().update(function(data)
     data.current_session = name

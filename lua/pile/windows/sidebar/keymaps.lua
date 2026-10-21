@@ -87,9 +87,23 @@ function M.setup(sidebar)
     return groups.find_row(sidebar.get_rows(), rows[from_line].buffer.buf, group.tab)
   end
 
+  local function move_tab(tab, step)
+    if tab_actions.move(tab, step) then
+      sidebar.update()
+      return groups.find_header(sidebar.get_rows(), tab)
+    end
+  end
+
+  -- On a header the whole tab moves
   local function move_line(step)
+    local row = sidebar.get_row_at_cursor()
     local line = get_current_line()
-    local new_line = move_rows(line, line, step)
+    local new_line
+    if row and not row.buffer then
+      new_line = row.group.tab and move_tab(row.group.tab, step)
+    else
+      new_line = move_rows(line, line, step)
+    end
     if new_line then
       vim.api.nvim_win_set_cursor(wins.get(), {new_line, 0})
     end
@@ -174,8 +188,8 @@ function M.setup(sidebar)
     preview.toggle(sidebar.get_buffer_at_cursor())
   end, "Toggle preview")
 
-  set_keymap('n', '<C-j>', function() move_line(1) end, "Move buffer down")
-  set_keymap('n', '<C-k>', function() move_line(-1) end, "Move buffer up")
+  set_keymap('n', '<C-j>', function() move_line(1) end, "Move buffer or tab down")
+  set_keymap('n', '<C-k>', function() move_line(-1) end, "Move buffer or tab up")
   set_keymap('x', '<C-j>', function() move_selection("down") end, "Move selection down")
   set_keymap('x', '<C-k>', function() move_selection("up") end, "Move selection up")
 end

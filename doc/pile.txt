@@ -202,11 +202,12 @@ Buffers that share a file name get the shortest distinguishing directory as
 prefix.
 
                                                           *pile-sidebar-tabs*
-Buffers are grouped under a header line per tab ("Tab 1", "Tab 2", ...). A
-buffer belongs to a tab once it is added to the buffer list or entered in
-that tab, and stays there when no window shows it any more. A buffer can
-belong to several tabs and then appears in each group. When a tab is closed,
-buffers that belonged only to it are kept under "Unassigned" at the end.
+Buffers are grouped under a header line per tab ("Tab 1", "Tab 2", ..., or
+the tab's name; see |pile-tab-names|). A buffer belongs to a tab once it is
+added to the buffer list or entered in that tab, and stays there when no
+window shows it any more. A buffer can belong to several tabs and then
+appears in each group. When a tab is closed, buffers that belonged only to it
+are kept under "Unassigned" at the end.
 
 Each line is a buffer in one tab: cut, yank, put and moves act on that tab's
 membership. "yy", then "p" in another tab's group, shares the buffer with
@@ -215,7 +216,7 @@ buffers out of every tab. A buffer the group already has moves instead of
 appearing twice.
 
 Each tab group keeps its own order; "Unassigned" follows the stored order of
-the whole list. The tab groups' own orders are not saved in the session.
+the whole list. The tab groups' own orders are saved in the session.
 
                                                        *pile-sidebar-keymaps*
 On a tab header line, these keys act on the tab:
@@ -224,6 +225,8 @@ On a tab header line, these keys act on the tab:
 o     O     Create a new tab after / before the tab and go to it.
 D           Close the tab, like |:tabclose|. Buffers that belonged only to
             it move to "Unassigned". The last tab is not closed.
+<C-j> <C-k> Move the tab one place later / earlier, like |:tabmove|. The
+            cursor follows the header; the current tab stays current.
 
 They do nothing on the "Unassigned" header. Other keys that act on a buffer
 do nothing on a header line, and `p` / `P` put at the top of that group.
@@ -245,7 +248,7 @@ D           Wipe the buffer immediately. Unsaved changes are lost.
 <C-j> <C-k> Move the buffer (or visual selection) down / up. Past the
             first or last line of a group, it goes to the adjacent group,
             leaving its tab as with "dd" and "p".
-a           Edit display names. See |pile-edit|.
+a           Edit display names and tab names. See |pile-edit|.
 e           Edit file paths. See |pile-edit|.
 
 pile's register holds buffers, not text, and is cleared when you leave the
@@ -272,16 +275,34 @@ and their horizontal/vertical splits (after |:tabonly| and |:only|), scaling
 the saved sizes to the current screen and focusing the previously active tab
 and window. Buffers already open stay open.
 
-Tab membership (|pile-sidebar-tabs|) is not saved. After a restore, a buffer
-belongs to the tabs whose windows show it, and files that were not open
-before also belong to the first tab.
+For every tab, its name and its buffers (|pile-sidebar-tabs|) are saved in
+the order of its group. Restore gives each tab these buffers; buffers saved
+under "Unassigned" stay there. Buffers that were open before the restore
+and are in no saved tab join the current tab. A tab whose windows show no
+saveable file opens on its first buffer.
+
+Sessions saved by older versions have no tab groups. After restoring one, a
+buffer belongs to the tabs whose windows show it, and the other files also
+belong to the first tab.
 
 ==============================================================================
 7. EDITING NAMES AND FILES                                         *pile-edit*
 
 `a` and `e` turn the sidebar into an editable buffer. Change lines and |:w|
 to apply, or press `q` to discard. Do not add, delete or reorder lines. The
-lines list each buffer once in the stored order, without tab headers.
+lines are the same as in the sidebar, tab headers included.
+
+A name or path belongs to the buffer. When a buffer appears in several
+groups, editing one of its lines is enough. If you edit several, they must
+have the same text; otherwise |:w| reports an error and applies nothing.
+
+                                                             *pile-tab-names*
+Tab names (`a`): edit a tab header line to name the tab. Empty the line, or
+write "Tab N" again, to remove the name. The "Unassigned" header cannot be
+renamed, and `e` does not edit headers. The name is kept in the tab-local
+variable `t:pile_name`, so a tabline can show it: >vim
+    echo gettabvar(tabpagenr(), 'pile_name')
+<
 
 Display names (`a`): the edited text becomes an alias shown in the sidebar.
 Empty the line, or restore the original name, to remove it. An alias follows

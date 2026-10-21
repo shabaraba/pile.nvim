@@ -68,6 +68,14 @@ function M.sort_buffers_by_session_order(buffer_list)
   return sorted
 end
 
+--- The list in the stored order when session.preserve_order is on, else as given
+function M.in_stored_order(buffer_list)
+  if M.is_enabled() then
+    return M.sort_buffers_by_session_order(buffer_list)
+  end
+  return buffer_list
+end
+
 function M.move_buffer(from_index, to_index, buffer_list)
   if from_index == to_index then
     return buffer_list
@@ -182,7 +190,7 @@ function M.save_buffer_order(buffer_list)
     })
   end
 
-  return session_store.save_session(session_name, buffers)
+  return session_store.save_buffers(session_name, buffers)
 end
 
 return M

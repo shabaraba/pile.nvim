@@ -18,11 +18,13 @@ pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: re
 - **Buffer sidebar** — lists the same buffers as `:ls`, highlights the current one, and opens a
   buffer in the window you pick
 - **Grouped by tab** — buffers are listed under the tab they were opened in, and the sidebar is
-  shown in every tab; cut, yank and put move or share buffers between tabs
+  shown in every tab; cut, yank and put move or share buffers between tabs, and tabs can be named
+  and reordered from their headers
 - **Vim-like reordering** — `dd` / `yy` / `p` / `P`, `<C-j>` / `<C-k>`, visual-mode selections,
   and `:PileSort`
-- **Per-project sessions** — the buffer list and its order are saved on exit and restored on
-  startup; named sessions let you switch between buffer sets
+- **Per-project sessions** — the buffer list, its order and the tabs (layout, names, and each
+  tab's buffers) are saved on exit and restored on startup; named sessions let you switch between
+  buffer sets
 - **Edit in place** — rename the display name of a buffer (`a`) or the file itself (`e`), and let
   the language server update imports (`workspace/willRenameFiles`)
 - **At-a-glance status** — file icons, unsaved-change mark (`●`), git status letter, and a colored
@@ -204,13 +206,16 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | `<CR>` | n | On a tab header: go to that tab |
 | `o` / `O` | n | On a tab header: create a tab after / before it |
 | `D` | n | On a tab header: close that tab (its buffers move to `Unassigned`; the last tab stays) |
-| `a` | n | Edit display names; `:w` applies, `q` cancels |
+| `<C-j>` / `<C-k>` | n | On a tab header: move that tab later / earlier |
+| `a` | n | Edit display names and tab names (on headers); `:w` applies, `q` cancels |
 | `e` | n | Edit file paths; `:w` renames files on disk, `q` cancels |
 
 Close the sidebar with `:PileToggle` or `:close`; either closes it in every tab. The register is
-cleared when you leave the sidebar window. On a tab header line, `<CR>`, `o` / `O` and `D` act on
-the tab (not on the `Unassigned` header), the other keys that act on a buffer do nothing, and
-`p` / `P` put at the top of that group.
+cleared when you leave the sidebar window. On a tab header line, `<CR>`, `o` / `O`, `D` and
+`<C-j>` / `<C-k>` act on the tab (not on the `Unassigned` header), the other keys that act on a
+buffer do nothing, and `p` / `P` put at the top of that group.
+
+A tab's name is kept in the tab-local variable `t:pile_name`, so a tabline can show it.
 
 Each line is a buffer in one tab. `yy` → another tab's group → `p` shares the buffer with that tab;
 `dd` → another tab's group → `p` moves it there. Putting into `Unassigned` takes it out of every
@@ -226,7 +231,7 @@ tab. Each tab group keeps its own order.
 | --- | --- | --- |
 | `SidebarCurrentBuffer` | `bg=#3E4452 fg=Red` | Current buffer line |
 | `PileAlias` | links to `Special` | Buffers with a display name |
-| `PileTabHeader` | links to `Title` | Tab header lines (`Tab 1`, `Unassigned`) |
+| `PileTabHeader` | links to `Title` | Tab header lines (`Tab 1` or the tab's name, `Unassigned`) |
 | `PileModified` | links to `WarningMsg` | `●` mark |
 | `PileGitModified` | links to `Changed` | `M`, `R` and other git letters |
 | `PileGitAdded` | links to `Added` | `A` |

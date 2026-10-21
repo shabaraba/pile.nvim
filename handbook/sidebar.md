@@ -26,8 +26,8 @@ Which buffers appear is described in
 
 ## Tab groups
 
-Buffers are grouped under a header line per tab (`Tab 1`, `Tab 2`, ...), highlighted with
-`PileTabHeader`:
+Buffers are grouped under a header line per tab (`Tab 1`, `Tab 2`, ..., or the tab's name),
+highlighted with `PileTabHeader`:
 
 ```
 Tab 1
@@ -58,13 +58,16 @@ Unassigned
 | `<CR>` | Go to that tab |
 | `o` / `O` | Create a new tab after / before that tab and go to it |
 | `D` | Close that tab |
+| `<C-j>` / `<C-k>` | Move that tab one place later / earlier (`:tabmove`); the cursor follows the header |
+| `a` | Edit names; editing a header names its tab (see [edit-mode.md](edit-mode.md#tab-names-a-on-a-header)) |
 
 - Closing a tab from the sidebar is the same as `:tabclose`: buffers that belonged only to that tab
   are not deleted and move to `Unassigned`. Unsaved changes stay in their buffers.
-- The last tab is not closed.
+- The last tab is not closed, and moving a tab stops at the first and last place. The current tab
+  stays current while another tab moves.
 - The `Unassigned` header has no tab, so these keys do nothing on it.
 
-On a header line, `K`, `dd`, `yy` and `<C-j>` / `<C-k>` do nothing.
+On a header line, `K`, `dd` and `yy` do nothing.
 
 ## Opening a buffer
 
@@ -133,8 +136,8 @@ reordering one group leaves the others as they are. `Unassigned` follows the sto
 The stored order is one list for all groups, and every change of order is also written to it in
 the current session immediately: a move swaps places only among the buffers of that group, and a
 put buffer is stored right after the buffer it follows in the group. With a single tab this is the
-same as moving within the whole list. The tab groups' own orders are not saved yet; after a
-restart each group follows the stored order.
+same as moving within the whole list. The tab groups' own orders are saved with the session's
+windows (see [sessions.md](sessions.md)) and come back on restore.
 
 Buffers that have no position yet (for example a file you just opened) are appended at the bottom
 of their group.
