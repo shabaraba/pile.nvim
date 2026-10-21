@@ -1,0 +1,217 @@
+--- Session management for pile.nvim
+--- Handles saving and restoring buffer lists and window layouts
+local session_store = require('pile.storage.session_store')
+local log = require('pile.log')
+local capture = require('pile.features.session.capture')
+local restore_window_layout = require('pile.features.session.restore_layout')
+
+local M = {}
+
+--- Restore a buffer from a file path
+--- The buffer is added but deliberately left unloaded: loading it here would fire
+--- BufRead/FileType for every session file, dragging syntax, treesitter and LSP
+--- attach into startup. Neovim loads it on first display instead.
+--- @param path string File path to restore
+--- @return boolean Success status
+--- @return number|nil Buffer handle if successful
+local function restore_buffer(path)
+  if not path or vim.fn.filereadable(path) ~= 1 then
+    log.debug("File not readable: " .. (path or "nil"))
+    return false, nil
+  end
+
+  local buf = vim.fn.bufadd(path)
+  if buf > 0 then
+    -- bufadd() leaves 'buflisted' off, which hides the buffer from :bnext/:bprev
+    vim.bo[buf].buflisted = true
+    log.trace("Restored buffer: " .. path)
+    return true, buf
+  end
+  return false, nil
+end
+
+--- Close all empty nofile buffers
+--- Removes buffers with no name and buftype='nofile' (e.g., startup buffers)
+--- The sidebar's own scratch buffer matches too and is kept.
+local function close_empty_nofile_buffers()
+  local sidebar_buf = require('pile.globals').sidebar_buf
+  for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+    if buf ~= sidebar_buf and vim.api.nvim_buf_is_valid(buf) then
+      local name = vim.api.nvim_buf_get_name(buf)
+      local buftype = vim.bo[buf].buftype
+      if name == '' and buftype == 'nofile' then
+        pcall(vim.api.nvim_buf_delete, buf, { force = true })
+      end
+    end
+  end
+end
+
+--- Save current buffers and window layout to a session
+--- @param session_name string|nil Session name (defaults to current session)
+--- @return boolean Success status
+function M.save_current_buffers(session_name)
+  session_name = session_name or session_store.get_current_session_name()
+
+  local buffers = capture.buffers()
+  if #buffers == 0 then
+    log.debug("No buffers to save")
+    return false
+  end
+
+  local window_layout = capture.window_layout()
+  local ok = session_store.save_session(session_name, buffers, window_layout)
+  if ok then
+    log.debug(string.format("Saved %d buffers and %d windows to session '%s'",
+      #buffers, capture.count_windows(window_layout), session_name))
+  end
+  return ok
+end
+
+--- Restore buffers and window layout from a session
+--- @param session_name string|nil Session name (defaults to current session)
+--- @return boolean Success status
+function M.restore_session(session_name)
+  session_name = session_name or session_store.get_current_session_name()
+
+  local session = session_store.get_session(session_name)
+  if not session or not session.buffers then
+    log.debug("No session found: " .. session_name)
+    return false
+  end
+
+  require('pile.buffers.membership').clear_orders()
+  local buffers = vim.deepcopy(session.buffers)
+  table.sort(buffers, function(a, b)
+    return a.order < b.order
+  end)
+
+  -- Restoring fires a burst of buffer/window events; redraw the sidebar once at the end.
+  -- resume() must run even if restoring throws, or the sidebar stays frozen.
+  local sidebar = require('pile.windows.sidebar')
+  sidebar.suspend()
+
+  local restored_count = 0
+  local ok, err = pcall(function()
+    close_empty_nofile_buffers()
+
+    local buffer_map = {}
+    for _, buf_data in ipairs(buffers) do
+      local restored, buf = restore_buffer(buf_data.path)
+      if restored then
+        restored_count = restored_count + 1
+        buffer_map[buf_data.path] = buf
+      end
+    end
+
+    log.debug(string.format("Restoring layout with %d windows", capture.count_windows(session.layout)))
+    restore_window_layout(session.layout, buffer_map)
+  end)
+
+  sidebar.resume()
+
+  if not ok then
+    log.error("Failed to restore session '" .. session_name .. "': " .. tostring(err))
+  end
+
+  if restored_count > 0 then
+    log.debug(string.format("Restored %d/%d buffers from session '%s'",
+      restored_count, #buffers, session_name))
+  end
+
+  return restored_count > 0
+end
+
+--- Auto-save current session on VimLeavePre
+--- @return boolean Success status
+function M.auto_save()
+  return M.save_current_buffers()
+end
+
+--- Auto-restore session on startup
+--- Skips restoration if files were specified on command line
+--- @return boolean Success status
+function M.auto_restore()
+  local args = vim.fn.argv()
+  if #args > 0 then
+    log.debug("Skipping auto-restore: files specified on command line")
+    return false
+  end
+
+  return M.restore_session()
+end
+
+--- Create a new session with current buffers
+--- @param name string Session name
+--- @param switch_to boolean Whether to switch to the new session
+--- @return boolean Success status
+function M.create_session(name, switch_to)
+  if session_store.session_exists(name) then
+    log.warn("Session already exists: " .. name)
+    return false
+  end
+
+  local ok = M.save_current_buffers(name)
+  if ok and switch_to then
+    session_store.set_current_session(name)
+  end
+  return ok
+end
+
+--- Switch to a different session
+--- Saves current session before switching
+--- @param name string Session name to switch to
+--- @return boolean Success status
+function M.switch_session(name)
+  if not session_store.session_exists(name) then
+    log.warn("Session does not exist: " .. name)
+    return false
+  end
+
+  M.save_current_buffers()
+  session_store.set_current_session(name)
+  return M.restore_session(name)
+end
+
+--- Delete a session
+--- Cannot delete the current session
+--- @param name string Session name to delete
+--- @return boolean Success status
+function M.delete_session(name)
+  if name == session_store.get_current_session_name() then
+    log.warn("Cannot delete current session. Switch to another session first.")
+    return false
+  end
+
+  return session_store.delete_session(name)
+end
+
+--- List all available session names
+--- @return table List of session names
+function M.list_sessions()
+  return session_store.list_session_names()
+end
+
+--- Get the current session name
+--- @return string Current session name
+function M.get_current_session_name()
+  return session_store.get_current_session_name()
+end
+
+--- Get information about a session
+--- @param name string Session name
+--- @return table|nil Session info {name, buffer_count, last_updated} or nil
+function M.get_session_info(name)
+  local session = session_store.get_session(name)
+  if not session then
+    return nil
+  end
+
+  local buffers = session.buffers or {}
+  return {
+    name = session.name,
+    buffer_count = #buffers,
+    last_updated = session.last_updated
+  }
+end
+
+return M
