@@ -26,6 +26,11 @@ An alias replaces the file name in the sidebar only; the buffer and the file kee
 - Aliases are keyed by absolute path and stored per project, shared by all sessions
   (see [sessions.md](sessions.md)).
 - Aliased lines are highlighted with `PileAlias`.
+- When a buffer is renamed in Neovim by other means (`:file`, `:saveas`, oil.nvim, an LSP rename
+  ...), its alias and its position in the stored sessions move to the new path.
+- A file moved outside Neovim (e.g. `mv` in a shell) keeps its alias on the old path, and the alias
+  comes back if a file appears there again. `:PilePruneAliases` removes the aliases of paths that
+  neither exist on disk nor are open as a buffer.
 
 ## File renames (`e`)
 

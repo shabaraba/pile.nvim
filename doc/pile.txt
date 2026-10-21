@@ -183,6 +183,10 @@ debug.level             "error", "warn", "info", "debug" or "trace".
                                                            *:PileListSessions*
 :PileListSessions       List sessions; "*" marks the current one.
 
+                                                           *:PilePruneAliases*
+:PilePruneAliases       Remove the aliases of paths that neither exist on
+                        disk nor are open as a buffer. See |pile-edit|.
+
 ==============================================================================
 5. SIDEBAR                                                      *pile-sidebar*
 
@@ -236,7 +240,10 @@ and window. Buffers already open stay open.
 to apply, or press `q` to discard. Do not add, delete or reorder lines.
 
 Display names (`a`): the edited text becomes an alias shown in the sidebar.
-Empty the line, or restore the original name, to remove it.
+Empty the line, or restore the original name, to remove it. An alias follows
+its buffer when the buffer is renamed in Neovim (|:file|, |:saveas|, file
+managers, LSP renames). Files moved outside Neovim keep the alias on the old
+path; |:PilePruneAliases| removes such aliases.
 
 File paths (`e`): lines are paths relative to the current directory. Editing
 one renames or moves the file; missing directories are created. Nothing is

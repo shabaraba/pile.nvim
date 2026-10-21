@@ -40,6 +40,7 @@ lua/pile/
 │   ├── filter.lua     # Listed/unlisted filtering, exclude/include rules
 │   └── disambiguate.lua # Path prefixes for buffers sharing a file name
 ├── features/
+│   ├── aliases.lua    # Aliases follow buffer renames; :PilePruneAliases
 │   ├── session.lua    # Save/restore buffers and window layout
 │   ├── reorder.lua    # Persisted custom buffer order
 │   ├── register.lua   # Sidebar cut/yank/paste register
@@ -77,6 +78,7 @@ lua/pile/
 - `:PileToggle`, `:PileGoToNextBuffer`, `:PileGoToPrevBuffer`
 - `:PileMoveBufferUp`, `:PileMoveBufferDown`, `:PileSort[!] {key}`
 - `:PileSaveSession`, `:PileRestoreSession`, `:PileCreateSession`, `:PileSwitchSession`, `:PileDeleteSession`, `:PileListSessions`
+- `:PilePruneAliases`
 
 ### Sidebar Keymaps
 
