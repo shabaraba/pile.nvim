@@ -116,10 +116,13 @@ function M.setup(sidebar)
     restore_visual_selection(from_line + step, to_line + step)
   end
 
+  -- The "Unassigned" header has no tab and takes no tab action
   local function on_header(action, ...)
     local row = sidebar.get_row_at_cursor()
     if row and not row.buffer then
-      action(row.group, ...)
+      if row.group.tab then
+        action(row.group.tab, ...)
+      end
       return true
     end
   end
