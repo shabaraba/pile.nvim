@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0](https://github.com/shabaraba/pile.nvim/compare/v2.1.0...v2.2.0) (2026-10-22)
+
+
+### Features
+
+* add tabline option to show tab names ([#86](https://github.com/shabaraba/pile.nvim/issues/86)) ([76caf60](https://github.com/shabaraba/pile.nvim/commit/76caf60a382cb21658ec89ac124a9ea3b08534f5))
+* edit aliases and tab names directly in the sidebar ([#84](https://github.com/shabaraba/pile.nvim/issues/84)) ([38b385f](https://github.com/shabaraba/pile.nvim/commit/38b385f5e9cd236e47827f310786009b7c392934))
+* expose tab_label() for showing tab names in a tabline ([#85](https://github.com/shabaraba/pile.nvim/issues/85)) ([409392e](https://github.com/shabaraba/pile.nvim/commit/409392e9586905f690b0088946f85f1a1baad690))
+* keep display names across buffer renames and add :PilePruneAliases ([#73](https://github.com/shabaraba/pile.nvim/issues/73)) ([ca683ab](https://github.com/shabaraba/pile.nvim/commit/ca683ab7e3b4caf844e7ab0b4529fe9cd7e52090))
+* move and share buffers between tabs ([#82](https://github.com/shabaraba/pile.nvim/issues/82)) ([688e8c0](https://github.com/shabaraba/pile.nvim/commit/688e8c0e7ecd415919cd96562c3eaf489c1d0ed3))
+* name and reorder tabs, persist tab groups in sessions ([#83](https://github.com/shabaraba/pile.nvim/issues/83)) ([88f6c4f](https://github.com/shabaraba/pile.nvim/commit/88f6c4f7c5156c454013e35600b9adb66cf4aaad))
+* switch, create and close tabs from sidebar headers ([#81](https://github.com/shabaraba/pile.nvim/issues/81)) ([cef0a9a](https://github.com/shabaraba/pile.nvim/commit/cef0a9a4fcc4a1ff7d2d3e3d47314ff7eb973c1c))
+* track tab membership and group the sidebar by tab ([#80](https://github.com/shabaraba/pile.nvim/issues/80)) ([8bc5006](https://github.com/shabaraba/pile.nvim/commit/8bc50065110156d21c3b518bb92a8c0b98fd22ae))
+
 ## [2.1.0](https://github.com/shabaraba/pile.nvim/compare/v2.0.0...v2.1.0) (2026-10-16)
 
 
