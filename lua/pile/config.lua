@@ -68,6 +68,10 @@ M.setup = function(opts)
     confirm = set_default("rename.confirm", true),
   }
 
+  M.tabline = {
+    enabled = set_default("tabline.enabled", false),
+  }
+
   M.window_picker = set_default("window_picker", {})
 
   for _, rule in ipairs({ "exclude", "include" }) do

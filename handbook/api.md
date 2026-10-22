@@ -26,10 +26,13 @@ change without notice.
 
 ### Showing tab names in the tabline
 
-Neovim's tabs have no names, and the default tabline shows the buffer of each tab. pile does not
-set `'tabline'`; to show the names given in the sidebar (see
-[edit-mode.md](edit-mode.md)), call `tab_label()` from your tabline.
-It returns the same text as the sidebar header: the name, or `Tab N` when the tab has none.
+Neovim's tabs have no names, and the default tabline shows the buffer of each tab. To show the
+names given in the sidebar (see [edit-mode.md](edit-mode.md)):
+
+- Without a tabline plugin, set `tabline.enabled = true` (see
+  [configuration.md](configuration.md#tabline)); pile then sets `'tabline'` itself.
+- With a tabline plugin or your own `'tabline'`, keep the option off and call `tab_label()`. It
+  returns the same text as the sidebar header: the name, or `Tab N` when the tab has none.
 
 With [lualine](https://github.com/nvim-lualine/lualine.nvim):
 
@@ -41,19 +44,7 @@ tabline = {
 },
 ```
 
-With your own `'tabline'`:
-
-```lua
-function _G.pile_tabline()
-  local current, parts = vim.fn.tabpagenr(), {}
-  for i = 1, vim.fn.tabpagenr("$") do
-    local label = require("pile").tab_label(i):gsub("%%", "%%%%")
-    table.insert(parts, (i == current and "%#TabLineSel#" or "%#TabLine#") .. "%" .. i .. "T " .. label .. " ")
-  end
-  return table.concat(parts) .. "%#TabLineFill#%T"
-end
-vim.o.tabline = "%!v:lua.pile_tabline()"
-```
+In your own `'tabline'`, escape `%` in the label: `require("pile").tab_label(i):gsub("%%", "%%%%")`.
 
 To fall back to your tabline's own label for unnamed tabs, read the tab-local variable instead:
 `vim.t[tabpage].pile_name` (or `gettabvar(tabnr, 'pile_name')`) is `nil` / empty when the tab has

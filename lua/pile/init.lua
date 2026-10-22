@@ -95,6 +95,7 @@ function M.setup(opts)
   initialized = true
 
   config.setup(opts)
+  require("pile.tabline").apply(config.tabline.enabled)
   setup_highlights()
   setup_autocmds()
   schedule_auto_restore()

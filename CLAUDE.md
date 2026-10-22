@@ -36,6 +36,7 @@ lua/pile/
 ├── git_status.lua     # Async `git status --porcelain` cache per repository
 ├── window_colors.lua  # Color assignment for window indicators
 ├── tab_names.lua      # Tab names in the tab-local variable `pile_name`
+├── tabline.lua        # Optional 'tabline' showing tab names (tabline.enabled)
 ├── buffers/
 │   ├── init.lua       # Buffer list, aliases, open in window, next/prev navigation
 │   ├── filter.lua     # Listed/unlisted filtering, exclude/include rules
