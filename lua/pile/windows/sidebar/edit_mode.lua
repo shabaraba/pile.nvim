@@ -9,22 +9,22 @@ local M = {}
 -- sidebar buffer itself (keymaps, decorations, options) is never touched.
 local state = nil
 
-local function notify_error(message)
-  vim.notify('pile: ' .. message, vim.log.levels.ERROR)
+local function file_text(buffer)
+  return vim.fn.fnamemodify(buffer.name, ':.')
 end
 
 local function write()
   local lines = vim.api.nvim_buf_get_lines(state.buf, 0, -1, false)
   local changes, _, invalid = edit_apply.collect(state.entries, lines, false)
   if invalid then
-    notify_error(invalid)
+    edit_apply.notify_error(invalid)
     return
   end
 
   if #changes > 0 then
     local err, keep_editing = edit_apply.apply_file_renames(changes)
     if err then
-      notify_error(err)
+      edit_apply.notify_error(err)
       if keep_editing then
         return
       end
@@ -46,15 +46,10 @@ function M.enter(sidebar)
     return
   end
 
-  local entries, lines = {}, {}
-  for _, row in ipairs(sidebar.get_rows()) do
-    local text = row.buffer and edit_apply.file_text(row.buffer) or row.group.label
-    table.insert(entries, { row = row, text = text })
-    table.insert(lines, text)
-  end
+  local entries = edit_apply.entries(sidebar.get_rows(), file_text)
 
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.tbl_map(function(entry) return entry.text end, entries))
   for i, entry in ipairs(entries) do
     if not entry.row.buffer then
       vim.api.nvim_buf_add_highlight(buf, -1, 'PileTabHeader', i - 1, 0, -1)

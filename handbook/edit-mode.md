@@ -11,8 +11,8 @@ Like oil.nvim, the sidebar can be edited as text.
 
 - A buffer line sets its alias, a tab header line names its tab.
 - The change is applied on leaving Insert mode, or right after a Normal-mode change such as `r`,
-  `x` or `~`. The sidebar is redrawn afterwards and its undo history is dropped, so `u` does not
-  bring back an old name; set the name again instead.
+  `x` or `~`, and the sidebar is redrawn. Undo is off in the sidebar, so `u` does not bring back
+  an old name; set the name again instead.
 - The sidebar is not redrawn while you are in Insert mode, so the line you are typing is kept.
 - The sidebar keymaps still apply: `dd`, `yy`, `p` / `P`, `D`, `o` / `O`, `<CR>` and
   `<C-j>` / `<C-k>` act on buffers and tabs, not on the text.

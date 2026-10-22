@@ -163,7 +163,7 @@ function M.schedule_update(delay)
 end
 
 function M.update()
-  if M._is_opening or M._suspended or inline_edit.is_inserting() then
+  if M._is_opening or M._suspended then
     return
   end
 

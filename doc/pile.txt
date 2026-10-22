@@ -293,7 +293,7 @@ belong to the first tab.
 Names are edited directly in the sidebar. Change a line with `ciw`, |cc|,
 |A|, |r| and so on; the change is applied on leaving Insert mode, or right
 after a Normal-mode change. The sidebar is not redrawn while in Insert mode.
-After applying, it is redrawn and its undo history is dropped. The sidebar
+After applying, it is redrawn. Undo is off in the sidebar. The sidebar
 keymaps still apply, and lines must not be added or deleted (|J|, `dj`): a
 changed line count is reported and nothing is applied.
 

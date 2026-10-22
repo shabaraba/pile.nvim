@@ -20,8 +20,20 @@ local function check_header(row, edits_headers)
   end
 end
 
+function M.notify_error(message)
+  vim.notify('pile: ' .. message, vim.log.levels.ERROR)
+end
+
+--- @param text_of fun(buffer: table): string Text of a buffer line; headers show their group label
+--- @return table[] entries {row, text}
+function M.entries(rows, text_of)
+  return vim.tbl_map(function(row)
+    return { row = row, text = row.buffer and text_of(row.buffer) or row.group.label }
+  end, rows)
+end
+
 --- A buffer shown in several groups takes one name; its edited rows must agree
---- @param entries table[] {row, text} as shown before editing
+--- @param entries table[] {row, text} as shown before editing, from M.entries()
 --- @param lines string[] Edited lines
 --- @param edits_headers boolean Whether header lines may be changed
 --- @return table[]|nil changes {buffer, text}
@@ -75,10 +87,6 @@ local function confirm_renames(renames)
     table.insert(lines, vim.fn.fnamemodify(change.from, ':.') .. ' -> ' .. vim.fn.fnamemodify(change.to, ':.'))
   end
   return vim.fn.confirm('Rename files?\n' .. table.concat(lines, '\n'), '&Yes\n&No', 2) == 1
-end
-
-function M.file_text(buffer)
-  return vim.fn.fnamemodify(buffer.name, ':.')
 end
 
 --- @param changes table[] {buffer, text}

@@ -5,29 +5,18 @@ local render = require 'pile.windows.sidebar.render'
 
 local M = {}
 
-local inserting = false
-
---- Redraws are held back while typing so that they do not overwrite the line being edited
-function M.is_inserting()
-  return inserting
-end
-
 --- @return boolean changed true when the lines differed from the rows
 local function apply_edits(sidebar)
-  local rows = sidebar.get_rows()
-  local texts = render.lines(rows)
+  local entries = edit_apply.entries(sidebar.get_rows(), render.buffer_text)
   local lines = vim.api.nvim_buf_get_lines(globals.sidebar_buf, 0, -1, false)
+  local texts = vim.tbl_map(function(entry) return entry.text end, entries)
   if vim.deep_equal(lines, texts) then
     return false
   end
 
-  local entries = {}
-  for i, row in ipairs(rows) do
-    entries[i] = { row = row, text = texts[i] }
-  end
   local changes, tab_changes, invalid = edit_apply.collect(entries, lines, true)
   if invalid then
-    vim.notify('pile: ' .. invalid, vim.log.levels.ERROR)
+    edit_apply.notify_error(invalid)
   else
     edit_apply.apply_aliases(changes)
     edit_apply.apply_tab_names(tab_changes)
@@ -35,21 +24,20 @@ local function apply_edits(sidebar)
   return true
 end
 
---- @param sidebar table Sidebar module providing get_rows() and update()
+--- @param sidebar table Sidebar module providing get_rows(), update(), suspend() and resume()
 function M.setup(sidebar)
   local buf = globals.sidebar_buf
+  -- Undo would bring back names that no longer match the rows
+  vim.bo[buf].undolevels = -1
 
-  vim.api.nvim_create_autocmd("InsertEnter", {
-    buffer = buf,
-    callback = function() inserting = true end,
-  })
+  -- A redraw while typing would overwrite the line being edited
+  vim.api.nvim_create_autocmd("InsertEnter", { buffer = buf, callback = sidebar.suspend })
 
   vim.api.nvim_create_autocmd("InsertLeave", {
     buffer = buf,
     callback = function()
-      inserting = false
       apply_edits(sidebar)
-      sidebar.update()
+      sidebar.resume()
     end,
   })
 

@@ -8,15 +8,15 @@ local ns_id = vim.api.nvim_create_namespace('pile_line_decorations')
 
 local M = {}
 
---- Text of a sidebar line: the buffer's display name, or the group label on a header
-function M.row_text(row)
-  local buffer = row.buffer
-  return buffer and (buffer.alias or buffer.filename) or row.group.label
+--- Text of a buffer line; header lines show their group label
+function M.buffer_text(buffer)
+  return buffer.alias or buffer.filename
 end
 
---- @return string[]
-function M.lines(rows)
-  return vim.tbl_map(M.row_text, rows)
+local function rows_to_lines(rows)
+  return vim.tbl_map(function(row)
+    return row.buffer and M.buffer_text(row.buffer) or row.group.label
+  end, rows)
 end
 
 local function highlight_lines(rows, target_buffer)
@@ -107,13 +107,7 @@ end
 --- @param rows table[] From groups.rows()
 --- @param current_buf number Buffer to highlight as current in the current tab's group
 function M.draw(rows, current_buf)
-  -- Lines are editable names; a redraw drops the undo history, which would
-  -- otherwise restore names that no longer match the rows
-  local buf = globals.sidebar_buf
-  local undolevels = vim.bo[buf].undolevels
-  vim.bo[buf].undolevels = -1
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, M.lines(rows))
-  vim.bo[buf].undolevels = undolevels
+  vim.api.nvim_buf_set_lines(globals.sidebar_buf, 0, -1, false, rows_to_lines(rows))
 
   highlight_lines(rows, current_buf)
   apply_decorations(rows)
