@@ -25,8 +25,9 @@ pile.nvim lists your buffers in a sidebar that you edit like a normal buffer: re
 - **Per-project sessions** — the buffer list, its order and the tabs (layout, names, and each
   tab's buffers) are saved on exit and restored on startup; named sessions let you switch between
   buffer sets
-- **Edit in place** — rename the display name of a buffer (`a`) or the file itself (`e`), and let
-  the language server update imports (`workspace/willRenameFiles`)
+- **Edit in place** — rewrite a line of the sidebar to set a buffer's display name or a tab's name,
+  or rename the file itself (`e`) and let the language server update imports
+  (`workspace/willRenameFiles`)
 - **At-a-glance status** — file icons, unsaved-change mark (`●`), git status letter, and a colored
   marker for every window that shows the buffer
 - **Floating preview** that follows the cursor (`K`)
@@ -207,7 +208,7 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 | `o` / `O` | n | On a tab header: create a tab after / before it |
 | `D` | n | On a tab header: close that tab (its buffers move to `Unassigned`; the last tab stays) |
 | `<C-j>` / `<C-k>` | n | On a tab header: move that tab later / earlier |
-| `a` | n | Edit display names and tab names (on headers); `:w` applies, `q` cancels |
+| `ciw`, `cc`, `A` ... | n | Edit a line as text: a buffer line sets its display name, a header names its tab; applied on returning to Normal mode |
 | `e` | n | Edit file paths; `:w` renames files on disk, `q` cancels |
 
 Close the sidebar with `:PileToggle` or `:close`; either closes it in every tab. The register is

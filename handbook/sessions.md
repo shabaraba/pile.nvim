@@ -18,7 +18,7 @@ every directory of one repository shares the same sessions. The file holds:
 
 - every session of the project
 - which session is current (`default` until you switch)
-- the display names (aliases) set with `a`, shared by all sessions of the project
+- the display names (aliases) set by editing the sidebar, shared by all sessions of the project
 
 The file is written atomically (temporary file + rename), so a failed write cannot corrupt it.
 

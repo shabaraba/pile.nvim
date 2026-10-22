@@ -63,8 +63,9 @@ lua/pile/
         ├── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
         ├── marks.lua    # Right-aligned unsaved/git status marks
         ├── status_watch.lua # Autocmds that refresh modified/git state
-        ├── edit_mode.lua  # Editable sidebar for aliases/tab names (a) and file renames (e)
-        └── edit_apply.lua # Applies the edited aliases, paths and tab names
+        ├── inline_edit.lua # Aliases/tab names edited directly in the sidebar buffer
+        ├── edit_mode.lua  # Editable path buffer for file renames (e)
+        └── edit_apply.lua # Collects edited lines; applies aliases, paths and tab names
 ```
 
 ### Key Design Patterns
@@ -86,7 +87,8 @@ lua/pile/
 
 - `<CR>` open, `K` preview, `dd`/`yy`/`p`/`P` register (visual `d`/`y`), `D` wipe buffer
 - `<C-j>`/`<C-k>` reorder (normal and visual)
-- `a` edit aliases, `e` edit file paths (`:w` applies, `q` cancels)
+- Editing a line in place (`ciw`, `cc` ...) sets an alias, or a tab name on a header
+- `e` edit file paths (`:w` applies, `q` cancels)
 
 ## Configuration
 

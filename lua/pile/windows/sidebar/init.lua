@@ -5,6 +5,7 @@ local log = require 'pile.log'
 local preview = require 'pile.windows.preview'
 local render = require 'pile.windows.sidebar.render'
 local keymaps = require 'pile.windows.sidebar.keymaps'
+local inline_edit = require 'pile.windows.sidebar.inline_edit'
 local status_watch = require 'pile.windows.sidebar.status_watch'
 local wins = require 'pile.windows.sidebar.wins'
 
@@ -27,6 +28,7 @@ local M = {}
 local function create_buffer()
   globals.sidebar_buf = vim.api.nvim_create_buf(false, true)
   keymaps.setup(M)
+  inline_edit.setup(M)
 
   vim.api.nvim_create_autocmd("WinLeave", {
     group = augroup,
