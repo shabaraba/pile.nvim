@@ -13,14 +13,51 @@ pile.switch_to_next_buffer()   -- :PileGoToNextBuffer
 pile.switch_to_prev_buffer()   -- :PileGoToPrevBuffer
 pile.move_buffer_up()          -- :PileMoveBufferUp
 pile.move_buffer_down()        -- :PileMoveBufferDown
+pile.tab_label(tabnr)          -- name of tab `tabnr` (nil or 0: current), see below
 ```
 
 ```lua
 vim.keymap.set("n", "<leader>pp", require("pile").toggle_sidebar, { desc = "Pile: toggle sidebar" })
 ```
 
-These functions initialize pile on first use if it has not initialized yet. Modules under
-`pile.*` other than `pile` itself are internal and may change without notice.
+These functions initialize pile on first use if it has not initialized yet, except `tab_label`,
+which only reads the name. Modules under `pile.*` other than `pile` itself are internal and may
+change without notice.
+
+### Showing tab names in the tabline
+
+Neovim's tabs have no names, and the default tabline shows the buffer of each tab. pile does not
+set `'tabline'`; to show the names given in the sidebar (see
+[edit-mode.md](edit-mode.md)), call `tab_label()` from your tabline.
+It returns the same text as the sidebar header: the name, or `Tab N` when the tab has none.
+
+With [lualine](https://github.com/nvim-lualine/lualine.nvim):
+
+```lua
+tabline = {
+  lualine_a = {
+    { "tabs", mode = 1, fmt = function(_, context) return require("pile").tab_label(context.tabnr) end },
+  },
+},
+```
+
+With your own `'tabline'`:
+
+```lua
+function _G.pile_tabline()
+  local current, parts = vim.fn.tabpagenr(), {}
+  for i = 1, vim.fn.tabpagenr("$") do
+    local label = require("pile").tab_label(i):gsub("%%", "%%%%")
+    table.insert(parts, (i == current and "%#TabLineSel#" or "%#TabLine#") .. "%" .. i .. "T " .. label .. " ")
+  end
+  return table.concat(parts) .. "%#TabLineFill#%T"
+end
+vim.o.tabline = "%!v:lua.pile_tabline()"
+```
+
+To fall back to your tabline's own label for unnamed tabs, read the tab-local variable instead:
+`vim.t[tabpage].pile_name` (or `gettabvar(tabnr, 'pile_name')`) is `nil` / empty when the tab has
+no name.
 
 ## Health check
 

@@ -348,6 +348,20 @@ PileGitUntracked        ?                              Links to |hl-Comment|
 <
 Other modules under `pile.` are internal.
 
+                                                            *pile.tab_label()*
+pile.tab_label({tabnr})
+    Return the name of tab {tabnr} as the sidebar header shows it: the name
+    from |pile-tab-names|, or "Tab N" when the tab has none. {tabnr} nil or
+    0 means the current tab; an invalid number returns "". It does not
+    initialize pile, so a 'tabline' can call it at any time.
+
+    pile does not set 'tabline'. To show tab names, call it from yours, for
+    example with the lualine "tabs" component: >lua
+    { "tabs", mode = 1, fmt = function(_, ctx)
+        return require("pile").tab_label(ctx.tabnr)
+      end }
+<
+
 ==============================================================================
 10. HEALTH CHECK                                                 *pile-health*
 
