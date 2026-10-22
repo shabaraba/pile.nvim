@@ -147,6 +147,10 @@ require("pile").setup({
     confirm = true,         -- ask before renaming files on disk (e)
   },
 
+  tabline = {
+    enabled = false,        -- set 'tabline' to show tab names; leave off with a tabline plugin
+  },
+
   window_picker = {},       -- passed to nvim-window-picker's pick_window(), see below
 
   exclude = {               -- hide matching buffers
@@ -216,8 +220,8 @@ cleared when you leave the sidebar window. On a tab header line, `<CR>`, `o` / `
 `<C-j>` / `<C-k>` act on the tab (not on the `Unassigned` header), the other keys that act on a
 buffer do nothing, and `p` / `P` put at the top of that group.
 
-pile does not change the tabline. To show tab names there, call `require("pile").tab_label(tabnr)`
-from your tabline, e.g. lualine's `tabs` component (see
+To show tab names in the tabline, set `tabline.enabled = true`, or, with a tabline plugin such as
+lualine, call `require("pile").tab_label(tabnr)` from it (see
 [Showing tab names in the tabline](handbook/api.md#showing-tab-names-in-the-tabline)).
 
 Each line is a buffer in one tab. `yy` → another tab's group → `p` shares the buffer with that tab;

@@ -76,6 +76,7 @@ Defaults: >lua
       marks = { modified = true, git = true },
       preview = { auto_open = false, border = "rounded" },
       rename = { confirm = true },
+      tabline = { enabled = false },
       window_picker = {},
       exclude = { filenames = {}, filetypes = {}, buftypes = {} },
       include = { filenames = {}, filetypes = {}, buftypes = {} },
@@ -113,6 +114,13 @@ preview.border          Border of the preview; see |nvim_open_win()|.
 
                                                        *pile-config-rename*
 rename.confirm          Ask before renaming files with `e`.
+
+                                                      *pile-config-tabline*
+tabline.enabled         Set 'tabline' to pile's tabline, which shows each
+                        tab's name from |pile-tab-names| (or "Tab N"). It
+                        replaces a 'tabline' set earlier; with a tabline
+                        plugin, leave it off and use |pile.tab_label()|.
+                        'showtabline' still decides when it is shown.
 
                                                 *pile-config-window_picker*
 window_picker           Options passed to nvim-window-picker's
@@ -363,8 +371,9 @@ pile.tab_label({tabnr})
     0 means the current tab; an invalid number returns "". It does not
     initialize pile, so a 'tabline' can call it at any time.
 
-    pile does not set 'tabline'. To show tab names, call it from yours, for
-    example with the lualine "tabs" component: >lua
+    Without a tabline plugin, |pile-config-tabline| shows the names. With
+    one, call this function from it, for example from the lualine "tabs"
+    component: >lua
     { "tabs", mode = 1, fmt = function(_, ctx)
         return require("pile").tab_label(ctx.tabnr)
       end }

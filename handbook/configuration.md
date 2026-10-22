@@ -80,6 +80,18 @@ repository. When a file has both staged and unstaged changes, the unstaged (work
 | --- | --- | --- |
 | `confirm` | `true` | List the `old -> new` paths and ask before renaming files with `e` |
 
+## `tabline`
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `enabled` | `false` | Set `'tabline'` to pile's tabline, which shows each tab's name (or `Tab N`) |
+
+pile's tabline replaces any `'tabline'` set before `setup()`, so leave it off when you use a tabline
+plugin such as lualine or bufferline.nvim and call `tab_label()` from it instead (see
+[api.md](api.md#showing-tab-names-in-the-tabline)). Turning the option off again removes pile's
+tabline only if it is still the one set. Whether the tabline is shown at all still follows
+`'showtabline'` (by default, only with two or more tabs).
+
 ## `window_picker`
 
 Default: `{}`.

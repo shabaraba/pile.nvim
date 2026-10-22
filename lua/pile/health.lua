@@ -79,6 +79,7 @@ local function check_config()
     { "marks.git", config.marks.git },
     { "preview.auto_open", config.preview.auto_open },
     { "rename.confirm", config.rename.confirm },
+    { "tabline.enabled", config.tabline.enabled },
   }
   for _, entry in ipairs(booleans) do
     valid = check_type(entry[1], entry[2], "boolean") and valid
