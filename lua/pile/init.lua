@@ -249,9 +249,21 @@ function M.prune_aliases()
   print("Removed " .. count .. " display name(s) of missing files")
 end
 
+--- Name of a tab as the sidebar header shows it, for use in a tabline
+--- @param tabnr number|nil Tab number; nil or 0 for the current tab
+--- @return string The tab's name, "Tab N" when it has none, or "" for an invalid number
+function M.tab_label(tabnr)
+  local tab = (tabnr == nil or tabnr == 0) and vim.api.nvim_get_current_tabpage()
+    or vim.api.nvim_list_tabpages()[tabnr]
+  return tab and require("pile.tab_names").label(tab) or ""
+end
+
+-- The tabline is redrawn often and may be drawn before VimEnter; reading a tab name needs no setup
+local NO_AUTO_INIT = { setup = true, ensure_initialized = true, is_initialized = true, tab_label = true }
+
 -- Public functions work without an explicit setup(): the first call initializes pile
 for name, fn in pairs(M) do
-  if name ~= "setup" and name ~= "ensure_initialized" and name ~= "is_initialized" then
+  if not NO_AUTO_INIT[name] then
     M[name] = function(...)
       M.ensure_initialized()
       return fn(...)
