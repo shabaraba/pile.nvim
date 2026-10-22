@@ -248,8 +248,10 @@ D           Wipe the buffer immediately. Unsaved changes are lost.
 <C-j> <C-k> Move the buffer (or visual selection) down / up. Past the
             first or last line of a group, it goes to the adjacent group,
             leaving its tab as with "dd" and "p".
-a           Edit display names and tab names. See |pile-edit|.
 e           Edit file paths. See |pile-edit|.
+
+Other keys edit the lines as text: changing a buffer line sets its display
+name, changing a header names its tab. See |pile-edit|.
 
 pile's register holds buffers, not text, and is cleared when you leave the
 sidebar window. Every change of order is saved to the current session at
@@ -288,33 +290,39 @@ belong to the first tab.
 ==============================================================================
 7. EDITING NAMES AND FILES                                         *pile-edit*
 
-`a` and `e` turn the sidebar into an editable buffer. Change lines and |:w|
-to apply, or press `q` to discard. Do not add, delete or reorder lines. The
-lines are the same as in the sidebar, tab headers included.
+Names are edited directly in the sidebar. Change a line with `ciw`, |cc|,
+|A|, |r| and so on; the change is applied on leaving Insert mode, or right
+after a Normal-mode change. The sidebar is not redrawn while in Insert mode.
+After applying, it is redrawn and its undo history is dropped. The sidebar
+keymaps still apply, and lines must not be added or deleted (|J|, `dj`): a
+changed line count is reported and nothing is applied.
 
-A name or path belongs to the buffer. When a buffer appears in several
-groups, editing one of its lines is enough. If you edit several, they must
-have the same text; otherwise |:w| reports an error and applies nothing.
+A name belongs to the buffer. When a buffer appears in several groups,
+editing one of its lines is enough. If one change edits several of them,
+they must have the same text; otherwise nothing is applied.
 
                                                              *pile-tab-names*
-Tab names (`a`): edit a tab header line to name the tab. Empty the line, or
-write "Tab N" again, to remove the name. The "Unassigned" header cannot be
-renamed, and `e` does not edit headers. The name is kept in the tab-local
-variable `t:pile_name`, so a tabline can show it: >vim
+Tab names: edit a tab header line to name the tab. Empty the line, or write
+"Tab N" again, to remove the name. The "Unassigned" header cannot be
+renamed. The name is kept in the tab-local variable `t:pile_name`, so a
+tabline can show it: >vim
     echo gettabvar(tabpagenr(), 'pile_name')
 <
 
-Display names (`a`): the edited text becomes an alias shown in the sidebar.
-Empty the line, or restore the original name, to remove it. An alias follows
-its buffer when the buffer is renamed in Neovim (|:file|, |:saveas|, file
-managers, LSP renames). Files moved outside Neovim keep the alias on the old
-path; |:PilePruneAliases| removes such aliases.
+Display names: the edited text of a buffer line becomes an alias shown in
+the sidebar. Empty the line, or restore the original name, to remove it. An
+alias follows its buffer when the buffer is renamed in Neovim (|:file|,
+|:saveas|, file managers, LSP renames). Files moved outside Neovim keep the
+alias on the old path; |:PilePruneAliases| removes such aliases.
 
-File paths (`e`): lines are paths relative to the current directory. Editing
-one renames or moves the file; missing directories are created. Nothing is
-renamed when a line is empty, two buffers would get the same path, the
-target exists, or the buffer has unsaved changes. With `rename.confirm` you
-are asked first.
+File paths (`e`): the sidebar is replaced by an editable buffer of the same
+lines, tab headers included, showing paths relative to the current
+directory. Change lines and |:w| to apply, or press `q` to discard. Headers
+are not edited here, and lines must not be added, deleted or reordered.
+Editing a path renames or moves the file; missing directories are created.
+Nothing is renamed when a line is empty, two buffers would get the same
+path, the target exists, or the buffer has unsaved changes. With
+`rename.confirm` you are asked first.
 
 Language servers that support `workspace/willRenameFiles` receive the
 renames first (3 second timeout) and their edits, such as updated imports,

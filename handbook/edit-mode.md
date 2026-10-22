@@ -1,44 +1,45 @@
 # Editing names and files
 
-Like oil.nvim, the sidebar can be edited as text. Press a key to turn the list into an editable
-buffer, change lines, and `:w` to apply.
+Like oil.nvim, the sidebar can be edited as text.
 
-| Key | Edits | `:w` does |
-| --- | --- | --- |
-| `a` | Display names and tab names | Saves aliases shown in the sidebar and names the tabs |
-| `e` | File paths, relative to the current directory | Renames / moves the files on disk |
+- **Display names and tab names** are edited directly in the sidebar: change a line with `ciw`,
+  `cc`, `A`, `r` ... and the name is applied when you return to Normal mode.
+- **File paths** are edited in a separate mode: `e` turns the list into an editable buffer of
+  paths, and `:w` renames the files.
 
-While editing:
+## Editing the sidebar directly
 
-- The winbar shows `pile: edit names` / `pile: edit paths` with a reminder of the keys.
-- The sidebar keymaps are off, so `dd`, `p`, `x` ... are ordinary text editing.
-- `q` discards the changes and returns to the sidebar.
-- The buffer has the same lines as the sidebar: the tab headers, and a buffer once in each group
-  it belongs to.
-- Each line stays tied to its header or buffer: **do not add, delete or reorder lines**. `:w`
-  rejects a changed line count; the list order is not changed by edit mode.
-- An alias or a path belongs to the buffer, not to one line. When a buffer appears in several
-  groups, editing any one of its lines is enough; if you edit several of them, they must have the
-  same text, or `:w` reports an error and applies nothing.
-- When validation fails or you decline the confirmation, you stay in edit mode and can fix the text.
+- A buffer line sets its alias, a tab header line names its tab.
+- The change is applied on leaving Insert mode, or right after a Normal-mode change such as `r`,
+  `x` or `~`. The sidebar is redrawn afterwards and its undo history is dropped, so `u` does not
+  bring back an old name; set the name again instead.
+- The sidebar is not redrawn while you are in Insert mode, so the line you are typing is kept.
+- The sidebar keymaps still apply: `dd`, `yy`, `p` / `P`, `D`, `o` / `O`, `<CR>` and
+  `<C-j>` / `<C-k>` act on buffers and tabs, not on the text.
+- Each line stays tied to its header or buffer: **do not add or delete lines** (e.g. `J`, `dj`).
+  A changed line count is reported as an error and the sidebar is redrawn without applying
+  anything.
+- An alias belongs to the buffer, not to one line. When a buffer appears in several groups,
+  editing one of its lines is enough; if one change edits several of them (e.g. `:%s`), they must
+  have the same text, or an error is reported and nothing is applied.
 
-## Tab names (`a` on a header)
+## Tab names (header lines)
 
 Edit a tab header line to name the tab; the header shows the name instead of `Tab N`.
 
 - Empty the line, or set it back to `Tab N`, to remove the name.
-- The `Unassigned` header cannot be renamed, and `e` does not edit headers; `:w` reports an error
-  and applies nothing.
+- The `Unassigned` header cannot be renamed, and `e` does not edit headers; an error is reported
+  and nothing is applied.
 - The name is stored in the tab-local variable `t:pile_name`, so a tabline can show it, e.g.
   `gettabvar(tabnr, 'pile_name')` or `vim.t[tabpage].pile_name`. The variable is removed when the
   name is.
 - Tab names are saved with the session (see [sessions.md](sessions.md)).
 
-## Display names (`a`)
+## Display names (buffer lines)
 
 An alias replaces the file name in the sidebar only; the buffer and the file keep their names.
 
-- Change a line and `:w` to set the alias.
+- Change a buffer line in the sidebar to set the alias.
 - Empty the line, or set it back to the original name, to remove the alias.
 - Aliases are keyed by absolute path and stored per project, shared by all sessions
   (see [sessions.md](sessions.md)).
@@ -51,8 +52,18 @@ An alias replaces the file name in the sidebar only; the buffer and the file kee
 
 ## File renames (`e`)
 
-Each line starts as the path relative to the current directory. Edit it to rename or move the file;
-an absolute path or `~/...` also works. Missing parent directories are created.
+`e` replaces the sidebar with an editable buffer of the same lines, the tab headers included, with
+each buffer line showing the path relative to the current directory. Edit a path to rename or move
+the file; an absolute path or `~/...` also works. Missing parent directories are created.
+
+While editing:
+
+- The winbar shows `pile: edit paths` with a reminder of the keys.
+- The sidebar keymaps are off, so `dd`, `p`, `x` ... are ordinary text editing.
+- `q` discards the changes and returns to the sidebar.
+- Do not add, delete or reorder lines; `:w` rejects a changed line count. When a buffer appears in
+  several groups, its edited lines must have the same path.
+- When validation fails or you decline the confirmation, you stay in edit mode and can fix the text.
 
 `:w` runs these steps:
 

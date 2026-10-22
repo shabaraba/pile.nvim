@@ -59,7 +59,7 @@ Unassigned
 | `o` / `O` | Create a new tab after / before that tab and go to it |
 | `D` | Close that tab |
 | `<C-j>` / `<C-k>` | Move that tab one place later / earlier (`:tabmove`); the cursor follows the header |
-| `a` | Edit names; editing a header names its tab (see [edit-mode.md](edit-mode.md#tab-names-a-on-a-header)) |
+| text editing | Change the header text (`ciw`, `cc` ...) to name the tab (see [edit-mode.md](edit-mode.md#tab-names-header-lines)) |
 
 - Closing a tab from the sidebar is the same as `:tabclose`: buffers that belonged only to that tab
   are not deleted and move to `Unassigned`. Unsaved changes stay in their buffers.
