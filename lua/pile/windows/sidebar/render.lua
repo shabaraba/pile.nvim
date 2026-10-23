@@ -3,6 +3,7 @@ local window_colors = require 'pile.window_colors'
 local config = require 'pile.config'
 local icons = require 'pile.icons'
 local marks = require 'pile.windows.sidebar.marks'
+local separators = require 'pile.windows.sidebar.separators'
 
 local ns_id = vim.api.nvim_create_namespace('pile_line_decorations')
 
@@ -34,34 +35,51 @@ local function highlight_lines(rows, target_buffer)
   end
 end
 
+--- Give every window its color (tinting its CursorLineNr)
 --- @param window_ids number[] Windows showing the buffer; buffers.get_list() already leaves out the sidebar
-local function build_indicator_virt_text(window_ids)
-  local virt_text = {}
-
-  for _, window_id in ipairs(window_ids) do
-    local color = window_colors.assign_color(window_id, config.window_indicator.colors)
-    if color then
+--- @return number[] Windows that got a color
+local function colored_windows(window_ids)
+  return vim.tbl_filter(function(window_id)
+    if window_colors.assign_color(window_id, config.window_indicator.colors) then
       window_colors.apply_to_window(window_id)
-      local hl_group = string.format("PileWindowIndicator_%d", window_id)
-      table.insert(virt_text, {"\226\150\136", hl_group})
+      return true
     end
-  end
+    return false
+  end, window_ids)
+end
 
-  return virt_text
+--- The line shows one color; the current window's wins
+local function line_window(window_ids)
+  local current = vim.api.nvim_get_current_win()
+  return vim.tbl_contains(window_ids, current) and current or window_ids[1]
 end
 
 local function window_indicators_enabled()
   return config.window_indicator.enabled
 end
 
-local function build_prefix_virt_text(buffer)
+local function uses_blocks()
+  return window_indicators_enabled() and config.window_indicator.style == "block"
+end
+
+local function set_line_indicator(line, window_id)
+  if window_id then
+    vim.api.nvim_buf_set_extmark(globals.sidebar_buf, ns_id, line, 0, {
+      number_hl_group = string.format("PileWindowIndicator_%d", window_id),
+      line_hl_group = string.format("PileWindowUnderline_%d", window_id),
+      priority = 100,
+    })
+  end
+end
+
+local function build_prefix_virt_text(buffer, window_ids)
   local virt_text = {}
 
-  if window_indicators_enabled() then
-    virt_text = build_indicator_virt_text(buffer.window_ids or {})
-    if #virt_text > 0 then
-      table.insert(virt_text, {" ", "Normal"})
+  if uses_blocks() and #window_ids > 0 then
+    for _, window_id in ipairs(window_ids) do
+      table.insert(virt_text, {"\226\150\136", string.format("PileWindowIndicator_%d", window_id)})
     end
+    table.insert(virt_text, {" ", "Normal"})
   end
 
   if config.icons.enabled then
@@ -97,7 +115,11 @@ local function apply_decorations(rows)
 
   for i, row in ipairs(rows) do
     if row.buffer then
-      set_virt_text(i - 1, build_prefix_virt_text(row.buffer), "inline")
+      local window_ids = window_indicators_enabled() and colored_windows(row.buffer.window_ids or {}) or {}
+      if window_indicators_enabled() and not uses_blocks() then
+        set_line_indicator(i - 1, line_window(window_ids))
+      end
+      set_virt_text(i - 1, build_prefix_virt_text(row.buffer, window_ids), "inline")
       set_virt_text(i - 1, marks.build(row.buffer), "right_align")
     end
   end
@@ -111,6 +133,7 @@ function M.draw(rows, current_buf)
 
   highlight_lines(rows, current_buf)
   apply_decorations(rows)
+  separators.draw(globals.sidebar_buf, vim.tbl_map(function(row) return not row.buffer end, rows))
 end
 
 return M

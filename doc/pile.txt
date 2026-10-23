@@ -67,6 +67,7 @@ Defaults: >lua
       },
       window_indicator = {
         enabled = true,
+        style = "block",
         colors = {
           "#E06C75", "#98C379", "#E5C07B", "#61AFEF", "#C678DD",
           "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
@@ -77,6 +78,7 @@ Defaults: >lua
       preview = { auto_open = false, border = "rounded" },
       rename = { confirm = true },
       tabline = { enabled = false },
+      tab_separator = { enabled = true, char = "─" },
       window_picker = {},
       exclude = { filenames = {}, filetypes = {}, buftypes = {} },
       include = { filenames = {}, filetypes = {}, buftypes = {} },
@@ -94,9 +96,18 @@ session.preserve_order  Show buffers in the stored order. When false, the
                         |:PileSort| are disabled.
 
                                              *pile-config-window_indicator*
-window_indicator.enabled  Prefix each line with one "█" per window that
-                          shows the buffer. The window's CursorLineNr is
+window_indicator.enabled  Mark each buffer that a window shows with the
+                          window's color. The window's CursorLineNr is
                           tinted with the same color.
+window_indicator.style    "block": prefix the line with one "█" per
+                          window.
+                          "line": color and bold the line number, and
+                          underline the line in the same color. The line
+                          number needs 'number' or 'relativenumber' in
+                          the sidebar window; the underline color needs
+                          a terminal that supports colored underlines.
+                          With several windows, the current window's
+                          color is used, otherwise the first window's.
 window_indicator.colors   Colors assigned to windows in turn.
 
                                                         *pile-config-icons*
@@ -121,6 +132,12 @@ tabline.enabled         Set 'tabline' to pile's tabline, which shows each
                         replaces a 'tabline' set earlier; with a tabline
                         plugin, leave it off and use |pile.tab_label()|.
                         'showtabline' still decides when it is shown.
+
+                                                *pile-config-tab_separator*
+tab_separator.enabled   Draw a line above each tab header except the first,
+                        so that each tab group stands apart. The line is a
+                        virtual line and takes no line number.
+tab_separator.char      Character repeated across the sidebar width.
 
                                                 *pile-config-window_picker*
 window_picker           Options passed to nvim-window-picker's
@@ -344,6 +361,7 @@ SidebarCurrentBuffer    Current buffer line. Set by setup(); override it
                         afterwards.
 PileAlias               Buffers with a display name.     Links to |hl-Special|
 PileTabHeader           Tab header lines.                  Links to |hl-Title|
+PileTabSeparator        Line above tab headers.     Links to |hl-WinSeparator|
 PileModified            "●" mark.                     Links to |hl-WarningMsg|
 PileGitModified         M, R and other git letters.   Links to |hl-Changed|
 PileGitAdded            A                                Links to |hl-Added|

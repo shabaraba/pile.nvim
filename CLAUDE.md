@@ -63,6 +63,7 @@ lua/pile/
         ├── render.lua   # Lines, current-buffer highlight, window indicators
         ├── keymaps.lua  # Sidebar keymaps (open, cut/yank/paste, reorder)
         ├── marks.lua    # Right-aligned unsaved/git status marks
+        ├── separators.lua # Virtual lines above tab headers (tab_separator)
         ├── status_watch.lua # Autocmds that refresh modified/git state
         ├── inline_edit.lua # Aliases/tab names edited directly in the sidebar buffer
         ├── edit_mode.lua  # Editable path buffer for file renames (e)

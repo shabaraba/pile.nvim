@@ -4,6 +4,7 @@ local layout = require 'pile.windows.layout'
 local M = {}
 
 local WIDTH = 35
+M.WIDTH = WIDTH
 
 -- tabpage -> { win, before, after }. before/after are the split layout around
 -- the sidebar's opening, so closing can restore the exact sizes instead of

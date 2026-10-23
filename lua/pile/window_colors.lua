@@ -39,6 +39,10 @@ function M.assign_color(window_id, colors)
     string.format("PileWindowBorder_%d", window_id),
     color
   )
+  vim.api.nvim_set_hl(0, string.format("PileWindowUnderline_%d", window_id), {
+    underline = true,
+    sp = color,
+  })
 
   return color
 end
