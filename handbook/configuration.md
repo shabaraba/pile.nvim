@@ -38,11 +38,17 @@ See [sessions.md](sessions.md) for what a session contains.
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `enabled` | `true` | Prefix each line with one `█` per window that currently shows the buffer |
+| `enabled` | `true` | Mark each buffer that a window currently shows with the window's color |
+| `style` | `"block"` | `"block"`: prefix the line with one `█` per window. `"line"`: color and bold the line number, and underline the line in the same color |
 | `colors` | 10 colors (see README) | Colors assigned to windows in the order they first appear; the list wraps around |
 
 The window's `CursorLineNr` is also tinted with its color (via `'winhighlight'`, keeping any entries
 you already set), so you can match a marker to its window.
+
+With `"line"`, the sidebar line numbers are colored only while the sidebar window shows them
+(`'number'` or `'relativenumber'`), and the underline color needs a terminal that supports colored
+underlines. A line has one color: with several windows on one buffer, the current window's color
+wins, otherwise the first window's.
 
 ## `icons`
 
@@ -91,6 +97,16 @@ plugin such as lualine or bufferline.nvim and call `tab_label()` from it instead
 [api.md](api.md#showing-tab-names-in-the-tabline)). Turning the option off again removes pile's
 tabline only if it is still the one set. Whether the tabline is shown at all still follows
 `'showtabline'` (by default, only with two or more tabs).
+
+## `tab_separator`
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `enabled` | `true` | Draw a line above each tab header except the first |
+| `char` | `"─"` | Character repeated across the sidebar width |
+
+The line is a virtual line: it takes no line number, the cursor skips it, and editing the sidebar
+is not affected. It is highlighted with `PileTabSeparator` (links to `WinSeparator`).
 
 ## `window_picker`
 

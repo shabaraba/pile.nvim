@@ -122,7 +122,8 @@ require("pile").setup({
   },
 
   window_indicator = {
-    enabled = true,         -- mark each window that shows the buffer with a colored "█"
+    enabled = true,         -- mark buffers shown in a window with the window's color
+    style = "block",        -- "block": a "█" per window; "line": colored line number and underline
     colors = {              -- assigned to windows in turn
       "#E06C75", "#98C379", "#E5C07B", "#61AFEF", "#C678DD",
       "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
@@ -149,6 +150,11 @@ require("pile").setup({
 
   tabline = {
     enabled = false,        -- set 'tabline' to show tab names; leave off with a tabline plugin
+  },
+
+  tab_separator = {
+    enabled = true,         -- draw a line above each tab header except the first
+    char = "─",             -- repeated across the sidebar width
   },
 
   window_picker = {},       -- passed to nvim-window-picker's pick_window(), see below
@@ -239,6 +245,7 @@ tab. Each tab group keeps its own order.
 | `SidebarCurrentBuffer` | `bg=#3E4452 fg=Red` | Current buffer line |
 | `PileAlias` | links to `Special` | Buffers with a display name |
 | `PileTabHeader` | links to `Title` | Tab header lines (`Tab 1` or the tab's name, `Unassigned`) |
+| `PileTabSeparator` | links to `WinSeparator` | Line above each tab header (`tab_separator`) |
 | `PileModified` | links to `WarningMsg` | `●` mark |
 | `PileGitModified` | links to `Changed` | `M`, `R` and other git letters |
 | `PileGitAdded` | links to `Added` | `A` |

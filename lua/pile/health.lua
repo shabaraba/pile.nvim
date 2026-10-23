@@ -80,13 +80,20 @@ local function check_config()
     { "preview.auto_open", config.preview.auto_open },
     { "rename.confirm", config.rename.confirm },
     { "tabline.enabled", config.tabline.enabled },
+    { "tab_separator.enabled", config.tab_separator.enabled },
   }
   for _, entry in ipairs(booleans) do
     valid = check_type(entry[1], entry[2], "boolean") and valid
   end
 
   valid = check_type("window_indicator.colors", config.window_indicator.colors, "table") and valid
-  valid = check_type("window_picker", config.window_picker, "table") and valid
+  local style = config.window_indicator.style
+  if style ~= "block" and style ~= "line" then
+    health.error(string.format('window_indicator.style must be "block" or "line", got %s', vim.inspect(style)))
+    valid = false
+  end
+  valid = check_type("tab_separator.char", config.tab_separator.char, "string") and valid
+  valid = check_type("window_picker",config.window_picker, "table") and valid
 
   for _, rule in ipairs({ "exclude", "include" }) do
     for _, field in ipairs({ "filenames", "filetypes", "buftypes" }) do
