@@ -14,7 +14,7 @@ every tab. Each buffer line shows, from left to right:
 └─┴─ one marker per window of that tab showing this buffer
 ```
 
-With `window_indicator.style = "mark"`, the markers move to the right edge, after the status marks:
+With `window_indicator.position = "right"`, the markers move to the right edge, after the status marks:
 
 ```
 init.lua                  M ● █ █

@@ -39,7 +39,8 @@ See [sessions.md](sessions.md) for what a session contains.
 | Key | Default | Description |
 | --- | --- | --- |
 | `enabled` | `true` | Mark each buffer that a window currently shows with the window's color |
-| `style` | `"block"` | `"block"`: prefix the line with one `█` per window. `"mark"`: put the same `█`s at the right edge, after the git and unsaved marks. `"line"`: color and bold the line number, and underline the line in the same color |
+| `style` | `"block"` | `"block"`: one `█` per window. `"line"`: color and bold the line number, and underline the line in the same color |
+| `position` | `"left"` | Where `"block"` draws its `█`s. `"left"`: before the name. `"right"`: at the right edge, after the git and unsaved marks |
 | `colors` | 10 colors (see README) | Colors assigned to windows in the order they first appear; the list wraps around |
 
 The window's `CursorLineNr` is also tinted with its color (via `'winhighlight'`, keeping any entries
@@ -55,10 +56,10 @@ wins, otherwise the first window's.
 | Key | Default | Description |
 | --- | --- | --- |
 | `enabled` | `true` | Show a file icon |
-| `position` | `"left"` | `"left"`: before the name. `"right"`: at the right edge, after the status marks (and after the window markers of `window_indicator.style = "mark"`) |
+| `position` | `"left"` | `"left"`: before the name. `"right"`: at the right edge, after the status marks (and after the window markers of `window_indicator.position = "right"`) |
 
 Moving the icon to the right keeps it apart from the window markers of
-`window_indicator.style = "block"`, which are drawn before the name.
+`window_indicator.style = "block"`, which are drawn before the name by default.
 
 The provider is chosen once, on first use: `mini.icons` if `MiniIcons` has been set up, otherwise
 `nvim-web-devicons`. With neither installed, no icon is shown.

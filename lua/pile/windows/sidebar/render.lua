@@ -58,9 +58,14 @@ local function window_indicators_enabled()
   return config.window_indicator.enabled
 end
 
---- @return "block"|"mark"|"line"|nil nil when indicators are disabled
+--- @return "block"|"line"|nil nil when indicators are disabled
 local function indicator_style()
   return window_indicators_enabled() and config.window_indicator.style or nil
+end
+
+--- @param position "left"|"right"
+local function blocks_at(position)
+  return indicator_style() == "block" and config.window_indicator.position == position
 end
 
 local function build_blocks(window_ids)
@@ -92,7 +97,7 @@ end
 local function build_prefix_virt_text(buffer, window_ids)
   local virt_text = {}
 
-  if indicator_style() == "block" and #window_ids > 0 then
+  if blocks_at("left") and #window_ids > 0 then
     virt_text = build_blocks(window_ids)
     table.insert(virt_text, {" ", "Normal"})
   end
@@ -106,10 +111,10 @@ local function build_prefix_virt_text(buffer, window_ids)
   return virt_text
 end
 
---- Space-separated right-aligned parts: status marks, "mark" blocks, then a right-side icon
+--- Space-separated right-aligned parts: status marks, right-side blocks, then a right-side icon
 local function build_suffix_virt_text(buffer, window_ids)
   local parts = { marks.build(buffer) }
-  if indicator_style() == "mark" then
+  if blocks_at("right") then
     table.insert(parts, build_blocks(window_ids))
   end
   table.insert(parts, { icon_chunk(buffer, "right") })

@@ -68,6 +68,7 @@ Defaults: >lua
       window_indicator = {
         enabled = true,
         style = "block",
+        position = "left",
         colors = {
           "#E06C75", "#98C379", "#E5C07B", "#61AFEF", "#C678DD",
           "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
@@ -99,10 +100,8 @@ session.preserve_order  Show buffers in the stored order. When false, the
 window_indicator.enabled  Mark each buffer that a window shows with the
                           window's color. The window's CursorLineNr is
                           tinted with the same color.
-window_indicator.style    "block": prefix the line with one "█" per
-                          window.
-                          "mark": put the same "█"s at the right edge,
-                          after the git and unsaved marks.
+window_indicator.style    "block": one "█" per window, placed by
+                          window_indicator.position.
                           "line": color and bold the line number, and
                           underline the line in the same color. The line
                           number needs 'number' or 'relativenumber' in
@@ -110,13 +109,16 @@ window_indicator.style    "block": prefix the line with one "█" per
                           a terminal that supports colored underlines.
                           With several windows, the current window's
                           color is used, otherwise the first window's.
+window_indicator.position "left": the "█"s go before the name.
+                          "right": at the right edge, after the git and
+                          unsaved marks. Used only by "block".
 window_indicator.colors   Colors assigned to windows in turn.
 
                                                         *pile-config-icons*
 icons.enabled           Show a file icon. Uses mini.icons when it has been
                         set up, otherwise nvim-web-devicons.
 icons.position          "left": before the name. "right": at the right
-                        edge, after the status marks and the "mark"
+                        edge, after the status marks and the right-side
                         window markers.
 
                                                         *pile-config-marks*
