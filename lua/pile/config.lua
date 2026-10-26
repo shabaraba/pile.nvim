@@ -44,6 +44,8 @@ M.setup = function(opts)
 
   M.window_indicator = {
     enabled = set_default("window_indicator.enabled", true),
+    style = set_default("window_indicator.style", "block"),
+    position = set_default("window_indicator.position", "left"),
     colors = set_default("window_indicator.colors", {
       "#E06C75", "#98C379", "#E5C07B", "#61AFEF", "#C678DD",
       "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
@@ -52,6 +54,7 @@ M.setup = function(opts)
 
   M.icons = {
     enabled = set_default("icons.enabled", true),
+    position = set_default("icons.position", "left"),
   }
 
   M.marks = {
@@ -70,6 +73,11 @@ M.setup = function(opts)
 
   M.tabline = {
     enabled = set_default("tabline.enabled", false),
+  }
+
+  M.tab_separator = {
+    enabled = set_default("tab_separator.enabled", true),
+    char = set_default("tab_separator.char", "─"),
   }
 
   M.window_picker = set_default("window_picker", {})

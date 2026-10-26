@@ -14,6 +14,27 @@ every tab. Each buffer line shows, from left to right:
 └─┴─ one marker per window of that tab showing this buffer
 ```
 
+With `window_indicator.position = "right"`, the markers move to the right edge, after the status marks:
+
+```
+init.lua                  M ● █ █
+```
+
+With `icons.position = "right"`, the file icon moves to the right edge as well, after everything
+else (`init.lua   M ● █ █ ` + icon).
+
+With `window_indicator.style = "line"`, the markers give way to the line number and an underline:
+
+```
+ 3  init.lua                 M ●
+ └─ line number, colored and bold; the whole line is underlined in the same color
+```
+
+The line number is colored only when the sidebar window shows line numbers (`'number'` or
+`'relativenumber'`); the underline does not depend on them, but its color needs a terminal that
+supports colored underlines. When several windows show the buffer, the line takes the color of the
+current window, or else of the first one.
+
 - The current buffer is highlighted with `SidebarCurrentBuffer` in the current tab's group;
   buffers with a display name use `PileAlias`.
 - When several buffers share a file name, the shortest distinguishing directory is prepended
@@ -33,14 +54,18 @@ highlighted with `PileTabHeader`:
 Tab 1
  init.lua
  config.lua
+───────────────
 Tab 2
  config.lua
  README.md
+───────────────
 Unassigned
  notes.md
 ```
 
-(The buffer lines start with their icon, which sets them apart from the headers.)
+(The buffer lines start with their icon, which sets them apart from the headers. The lines above
+the headers are virtual lines drawn by
+[`tab_separator`](configuration.md#tab_separator); they are not part of the buffer.)
 
 - A buffer belongs to a tab once it is added to the buffer list (`:edit`, `:badd`) or entered in
   that tab. It stays in the group when no window shows it any more.

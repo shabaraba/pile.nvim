@@ -38,17 +38,28 @@ See [sessions.md](sessions.md) for what a session contains.
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `enabled` | `true` | Prefix each line with one `█` per window that currently shows the buffer |
+| `enabled` | `true` | Mark each buffer that a window currently shows with the window's color |
+| `style` | `"block"` | `"block"`: one `█` per window. `"line"`: color and bold the line number, and underline the line in the same color |
+| `position` | `"left"` | Where `"block"` draws its `█`s. `"left"`: before the name. `"right"`: at the right edge, after the git and unsaved marks |
 | `colors` | 10 colors (see README) | Colors assigned to windows in the order they first appear; the list wraps around |
 
 The window's `CursorLineNr` is also tinted with its color (via `'winhighlight'`, keeping any entries
 you already set), so you can match a marker to its window.
 
+With `"line"`, the sidebar line numbers are colored only while the sidebar window shows them
+(`'number'` or `'relativenumber'`), and the underline color needs a terminal that supports colored
+underlines. A line has one color: with several windows on one buffer, the current window's color
+wins, otherwise the first window's.
+
 ## `icons`
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `enabled` | `true` | Show a file icon before the name |
+| `enabled` | `true` | Show a file icon |
+| `position` | `"left"` | `"left"`: before the name. `"right"`: at the right edge, after the status marks (and after the window markers of `window_indicator.position = "right"`) |
+
+Moving the icon to the right keeps it apart from the window markers of
+`window_indicator.style = "block"`, which are drawn before the name by default.
 
 The provider is chosen once, on first use: `mini.icons` if `MiniIcons` has been set up, otherwise
 `nvim-web-devicons`. With neither installed, no icon is shown.
@@ -91,6 +102,16 @@ plugin such as lualine or bufferline.nvim and call `tab_label()` from it instead
 [api.md](api.md#showing-tab-names-in-the-tabline)). Turning the option off again removes pile's
 tabline only if it is still the one set. Whether the tabline is shown at all still follows
 `'showtabline'` (by default, only with two or more tabs).
+
+## `tab_separator`
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `enabled` | `true` | Draw a line above each tab header except the first |
+| `char` | `"─"` | Character repeated across the sidebar width |
+
+The line is a virtual line: it takes no line number, the cursor skips it, and editing the sidebar
+is not affected. It is highlighted with `PileTabSeparator` (links to `WinSeparator`).
 
 ## `window_picker`
 

@@ -2,6 +2,7 @@ local globals = require 'pile.globals'
 local edit_apply = require 'pile.windows.sidebar.edit_apply'
 local status_watch = require 'pile.windows.sidebar.status_watch'
 local wins = require 'pile.windows.sidebar.wins'
+local separators = require 'pile.windows.sidebar.separators'
 
 local M = {}
 
@@ -55,6 +56,7 @@ function M.enter(sidebar)
       vim.api.nvim_buf_add_highlight(buf, -1, 'PileTabHeader', i - 1, 0, -1)
     end
   end
+  separators.draw(buf, vim.tbl_map(function(entry) return not entry.row.buffer end, entries))
   vim.api.nvim_buf_set_name(buf, 'pile://edit/' .. buf)
   vim.bo[buf].buftype = 'acwrite'
   vim.bo[buf].bufhidden = 'wipe'

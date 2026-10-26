@@ -45,6 +45,15 @@ local function check_type(path, value, expected)
   return true
 end
 
+local function check_enum(path, value, allowed)
+  if not vim.tbl_contains(allowed, value) then
+    local quoted = vim.tbl_map(function(v) return '"' .. v .. '"' end, allowed)
+    health.error(string.format("%s must be one of %s, got %s", path, table.concat(quoted, ", "), vim.inspect(value)))
+    return false
+  end
+  return true
+end
+
 local function check_patterns(rule, patterns)
   local valid = true
   for _, pattern in ipairs(patterns or {}) do
@@ -80,12 +89,17 @@ local function check_config()
     { "preview.auto_open", config.preview.auto_open },
     { "rename.confirm", config.rename.confirm },
     { "tabline.enabled", config.tabline.enabled },
+    { "tab_separator.enabled", config.tab_separator.enabled },
   }
   for _, entry in ipairs(booleans) do
     valid = check_type(entry[1], entry[2], "boolean") and valid
   end
 
   valid = check_type("window_indicator.colors", config.window_indicator.colors, "table") and valid
+  valid = check_enum("window_indicator.style", config.window_indicator.style, { "block", "line" }) and valid
+  valid = check_enum("window_indicator.position", config.window_indicator.position, { "left", "right" }) and valid
+  valid = check_enum("icons.position", config.icons.position, { "left", "right" }) and valid
+  valid = check_type("tab_separator.char", config.tab_separator.char, "string") and valid
   valid = check_type("window_picker", config.window_picker, "table") and valid
 
   for _, rule in ipairs({ "exclude", "include" }) do
