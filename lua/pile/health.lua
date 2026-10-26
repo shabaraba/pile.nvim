@@ -92,6 +92,11 @@ local function check_config()
     health.error(string.format('window_indicator.style must be "block", "mark" or "line", got %s', vim.inspect(style)))
     valid = false
   end
+  local icon_position = config.icons.position
+  if not vim.tbl_contains({ "left", "right" }, icon_position) then
+    health.error(string.format('icons.position must be "left" or "right", got %s', vim.inspect(icon_position)))
+    valid = false
+  end
   valid = check_type("tab_separator.char", config.tab_separator.char, "string") and valid
   valid = check_type("window_picker",config.window_picker, "table") and valid
 

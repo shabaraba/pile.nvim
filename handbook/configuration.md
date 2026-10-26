@@ -54,7 +54,11 @@ wins, otherwise the first window's.
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `enabled` | `true` | Show a file icon before the name |
+| `enabled` | `true` | Show a file icon |
+| `position` | `"left"` | `"left"`: before the name. `"right"`: at the right edge, after the status marks (and after the window markers of `window_indicator.style = "mark"`) |
+
+Moving the icon to the right keeps it apart from the window markers of
+`window_indicator.style = "block"`, which are drawn before the name.
 
 The provider is chosen once, on first use: `mini.icons` if `MiniIcons` has been set up, otherwise
 `nvim-web-devicons`. With neither installed, no icon is shown.

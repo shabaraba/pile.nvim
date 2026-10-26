@@ -79,6 +79,16 @@ local function set_line_indicator(line, window_id)
   end
 end
 
+--- @param position "left"|"right"
+--- @return table|nil virt_text chunk when the icon is shown on that side
+local function icon_chunk(buffer, position)
+  if not config.icons.enabled or config.icons.position ~= position then
+    return nil
+  end
+  local icon, hl = icons.get(buffer.name)
+  return icon and {icon, hl} or nil
+end
+
 local function build_prefix_virt_text(buffer, window_ids)
   local virt_text = {}
 
@@ -87,27 +97,32 @@ local function build_prefix_virt_text(buffer, window_ids)
     table.insert(virt_text, {" ", "Normal"})
   end
 
-  if config.icons.enabled then
-    local icon, hl = icons.get(buffer.name)
-    if icon then
-      table.insert(virt_text, {icon, hl})
-      table.insert(virt_text, {" ", "Normal"})
-    end
+  local icon = icon_chunk(buffer, "left")
+  if icon then
+    table.insert(virt_text, icon)
+    table.insert(virt_text, {" ", "Normal"})
   end
 
   return virt_text
 end
 
+--- Space-separated right-aligned parts: status marks, "mark" blocks, then a right-side icon
 local function build_suffix_virt_text(buffer, window_ids)
-  local virt_text = marks.build(buffer)
-
-  if indicator_style() == "mark" and #window_ids > 0 then
-    if #virt_text > 0 then
-      table.insert(virt_text, {" ", "Normal"})
-    end
-    vim.list_extend(virt_text, build_blocks(window_ids))
+  local parts = { marks.build(buffer) }
+  if indicator_style() == "mark" then
+    table.insert(parts, build_blocks(window_ids))
   end
+  table.insert(parts, { icon_chunk(buffer, "right") })
 
+  local virt_text = {}
+  for _, part in ipairs(parts) do
+    if #part > 0 then
+      if #virt_text > 0 then
+        table.insert(virt_text, {" ", "Normal"})
+      end
+      vim.list_extend(virt_text, part)
+    end
+  end
   return virt_text
 end
 

@@ -20,6 +20,9 @@ With `window_indicator.style = "mark"`, the markers move to the right edge, afte
 init.lua                  M ● █ █
 ```
 
+With `icons.position = "right"`, the file icon moves to the right edge as well, after everything
+else (`init.lua   M ● █ █ ` + icon).
+
 With `window_indicator.style = "line"`, the markers give way to the line number and an underline:
 
 ```

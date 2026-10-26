@@ -53,6 +53,7 @@ M.setup = function(opts)
 
   M.icons = {
     enabled = set_default("icons.enabled", true),
+    position = set_default("icons.position", "left"),
   }
 
   M.marks = {

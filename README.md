@@ -133,6 +133,7 @@ require("pile").setup({
 
   icons = {
     enabled = true,         -- mini.icons (if set up), otherwise nvim-web-devicons
+    position = "left",      -- "left": before the name; "right": at the right edge, after the marks
   },
 
   marks = {

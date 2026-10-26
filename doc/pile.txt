@@ -73,7 +73,7 @@ Defaults: >lua
           "#56B6C2", "#D19A66", "#ABB2BF", "#E06C75", "#98C379",
         },
       },
-      icons = { enabled = true },
+      icons = { enabled = true, position = "left" },
       marks = { modified = true, git = true },
       preview = { auto_open = false, border = "rounded" },
       rename = { confirm = true },
@@ -115,6 +115,9 @@ window_indicator.colors   Colors assigned to windows in turn.
                                                         *pile-config-icons*
 icons.enabled           Show a file icon. Uses mini.icons when it has been
                         set up, otherwise nvim-web-devicons.
+icons.position          "left": before the name. "right": at the right
+                        edge, after the status marks and the "mark"
+                        window markers.
 
                                                         *pile-config-marks*
 marks.modified          Show "●" while the buffer has unsaved changes.
