@@ -39,7 +39,7 @@ See [sessions.md](sessions.md) for what a session contains.
 | Key | Default | Description |
 | --- | --- | --- |
 | `enabled` | `true` | Mark each buffer that a window currently shows with the window's color |
-| `style` | `"block"` | `"block"`: prefix the line with one `█` per window. `"line"`: color and bold the line number, and underline the line in the same color |
+| `style` | `"block"` | `"block"`: prefix the line with one `█` per window. `"mark"`: put the same `█`s at the right edge, after the git and unsaved marks. `"line"`: color and bold the line number, and underline the line in the same color |
 | `colors` | 10 colors (see README) | Colors assigned to windows in the order they first appear; the list wraps around |
 
 The window's `CursorLineNr` is also tinted with its color (via `'winhighlight'`, keeping any entries

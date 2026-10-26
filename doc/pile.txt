@@ -101,6 +101,8 @@ window_indicator.enabled  Mark each buffer that a window shows with the
                           tinted with the same color.
 window_indicator.style    "block": prefix the line with one "█" per
                           window.
+                          "mark": put the same "█"s at the right edge,
+                          after the git and unsaved marks.
                           "line": color and bold the line number, and
                           underline the line in the same color. The line
                           number needs 'number' or 'relativenumber' in

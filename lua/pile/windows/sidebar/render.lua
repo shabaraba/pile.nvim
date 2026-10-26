@@ -58,8 +58,15 @@ local function window_indicators_enabled()
   return config.window_indicator.enabled
 end
 
-local function uses_blocks()
-  return window_indicators_enabled() and config.window_indicator.style == "block"
+--- @return "block"|"mark"|"line"|nil nil when indicators are disabled
+local function indicator_style()
+  return window_indicators_enabled() and config.window_indicator.style or nil
+end
+
+local function build_blocks(window_ids)
+  return vim.tbl_map(function(window_id)
+    return {"\226\150\136", string.format("PileWindowIndicator_%d", window_id)}
+  end, window_ids)
 end
 
 local function set_line_indicator(line, window_id)
@@ -75,10 +82,8 @@ end
 local function build_prefix_virt_text(buffer, window_ids)
   local virt_text = {}
 
-  if uses_blocks() and #window_ids > 0 then
-    for _, window_id in ipairs(window_ids) do
-      table.insert(virt_text, {"\226\150\136", string.format("PileWindowIndicator_%d", window_id)})
-    end
+  if indicator_style() == "block" and #window_ids > 0 then
+    virt_text = build_blocks(window_ids)
     table.insert(virt_text, {" ", "Normal"})
   end
 
@@ -88,6 +93,19 @@ local function build_prefix_virt_text(buffer, window_ids)
       table.insert(virt_text, {icon, hl})
       table.insert(virt_text, {" ", "Normal"})
     end
+  end
+
+  return virt_text
+end
+
+local function build_suffix_virt_text(buffer, window_ids)
+  local virt_text = marks.build(buffer)
+
+  if indicator_style() == "mark" and #window_ids > 0 then
+    if #virt_text > 0 then
+      table.insert(virt_text, {" ", "Normal"})
+    end
+    vim.list_extend(virt_text, build_blocks(window_ids))
   end
 
   return virt_text
@@ -116,11 +134,11 @@ local function apply_decorations(rows)
   for i, row in ipairs(rows) do
     if row.buffer then
       local window_ids = window_indicators_enabled() and colored_windows(row.buffer.window_ids or {}) or {}
-      if window_indicators_enabled() and not uses_blocks() then
+      if indicator_style() == "line" then
         set_line_indicator(i - 1, line_window(window_ids))
       end
       set_virt_text(i - 1, build_prefix_virt_text(row.buffer, window_ids), "inline")
-      set_virt_text(i - 1, marks.build(row.buffer), "right_align")
+      set_virt_text(i - 1, build_suffix_virt_text(row.buffer, window_ids), "right_align")
     end
   end
 end

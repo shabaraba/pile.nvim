@@ -88,8 +88,8 @@ local function check_config()
 
   valid = check_type("window_indicator.colors", config.window_indicator.colors, "table") and valid
   local style = config.window_indicator.style
-  if style ~= "block" and style ~= "line" then
-    health.error(string.format('window_indicator.style must be "block" or "line", got %s', vim.inspect(style)))
+  if not vim.tbl_contains({ "block", "mark", "line" }, style) then
+    health.error(string.format('window_indicator.style must be "block", "mark" or "line", got %s', vim.inspect(style)))
     valid = false
   end
   valid = check_type("tab_separator.char", config.tab_separator.char, "string") and valid
