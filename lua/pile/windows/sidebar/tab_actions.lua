@@ -9,15 +9,14 @@ local function report(ok, err)
   return ok
 end
 
---- @return boolean ok
 local function run(tab, command)
-  return vim.api.nvim_tabpage_is_valid(tab)
-    and report(pcall(vim.cmd, command(vim.api.nvim_tabpage_get_number(tab))))
+  if vim.api.nvim_tabpage_is_valid(tab) then
+    report(pcall(vim.cmd, command(vim.api.nvim_tabpage_get_number(tab))))
+  end
 end
 
---- @return boolean ok
 function M.go(tab)
-  return run(tab, function(number) return number .. 'tabnext' end)
+  run(tab, function(number) return number .. 'tabnext' end)
 end
 
 --- @param offset number 0 opens the new tab after `tab`, -1 before it
