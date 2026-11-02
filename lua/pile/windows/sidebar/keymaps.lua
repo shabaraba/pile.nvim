@@ -124,6 +124,21 @@ function M.setup(sidebar)
     end
   end
 
+  -- A buffer row of another tab goes to that tab; a window there already showing it gets the focus
+  --- @return boolean done true when nothing is left to open
+  local function go_to_row_tab(row)
+    local tab = row.group.tab
+    if not tab or tab == vim.api.nvim_get_current_tabpage() then
+      return false
+    end
+    local win = row.buffer.window_ids[1]
+    if win and vim.api.nvim_win_is_valid(win) then
+      vim.api.nvim_set_current_win(win)
+      return true
+    end
+    return not tab_actions.go(tab)
+  end
+
   set_keymap('n', 'o', function() on_header(tab_actions.new, 0) end, "New tab after this tab")
   set_keymap('n', 'O', function() on_header(tab_actions.new, -1) end, "New tab before this tab")
 
@@ -131,9 +146,13 @@ function M.setup(sidebar)
     if on_header(tab_actions.go) then
       return
     end
+    local row = sidebar.get_row_at_cursor()
+    if row and go_to_row_tab(row) then
+      return
+    end
     local available_windows = require('pile.windows').get_available_windows()
     require('pile.buffers').open_selected({
-      buffer = sidebar.get_buffer_at_cursor(),
+      buffer = row and row.buffer,
       available_windows = available_windows,
     })
   end, "Open buffer")

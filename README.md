@@ -209,7 +209,7 @@ See [handbook/configuration.md](handbook/configuration.md) for each option in de
 
 | Key | Mode | Action |
 | --- | --- | --- |
-| `<CR>` | n | Open the buffer (asks which window when there are several) |
+| `<CR>` | n | Open the buffer (asks which window when there are several); a buffer of another tab's group switches to that tab |
 | `K` | n | Toggle the floating preview |
 | `dd` / `d` | n / x | Cut: take the buffer(s) out of that tab and keep them in pile's register; a buffer left in no tab is closed |
 | `yy` / `y` | n / x | Yank the buffer(s) into pile's register |

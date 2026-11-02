@@ -265,7 +265,8 @@ do nothing on a header line, and `p` / `P` put at the top of that group.
 
 <CR>        Open the buffer. With several candidate windows of the current
             tab, nvim-window-picker asks which one; with none, a split is
-            made.
+            made. On a buffer of another tab's group, go to that tab
+            first and focus a window showing the buffer there, if any.
 K           Toggle a floating preview that follows the cursor. Buffers not
             loaded yet are previewed without firing |BufRead|.
 dd    {x}d  Cut: take the buffer(s) out of the tab of the line and keep
