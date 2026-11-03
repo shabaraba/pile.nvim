@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/shabaraba/pile.nvim/compare/v2.2.0...v2.3.0) (2026-11-03)
+
+
+### Features
+
+* switch to the tab when opening a buffer of another tab's group ([#88](https://github.com/shabaraba/pile.nvim/issues/88)) ([e4d7a2a](https://github.com/shabaraba/pile.nvim/commit/e4d7a2a0ffc082b4ef74be28deda0b0fbfbd412f))
+
 ## [2.2.0](https://github.com/shabaraba/pile.nvim/compare/v2.1.0...v2.2.0) (2026-10-26)
 
 
