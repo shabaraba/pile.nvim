@@ -104,6 +104,9 @@ On a header line, `K`, `dd` and `yy` do nothing.
 | One | The buffer is opened there |
 | Two or more | nvim-window-picker asks which window to use |
 
+On a buffer listed under another tab's group, `<CR>` goes to that tab first. When a window of that tab already shows
+the buffer, that window is focused; otherwise the buffer is opened in that tab as above.
+
 Candidates are normal (non-floating) windows of the current tab other than the sidebar, excluding windows that show a
 `nofile` / `popup` buffer or a `notify` window.
 
